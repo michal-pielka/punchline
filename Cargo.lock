@@ -143,6 +143,8 @@ name = "punchline-client"
 version = "0.1.0"
 dependencies = [
  "punchline-proto",
+ "serde_json",
+ "tungstenite",
 ]
 
 [[package]]
