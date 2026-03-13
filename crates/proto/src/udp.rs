@@ -6,6 +6,12 @@ pub struct UdpTransport {
     socket: UdpSocket,
 }
 
+impl UdpTransport {
+    pub fn new(socket: UdpSocket) -> Self {
+        Self { socket }
+    }
+}
+
 impl Transport for UdpTransport {
     fn send_to(&self, buf: &[u8], addr: std::net::SocketAddr) -> Result<usize, std::io::Error> {
         self.socket.send_to(buf, addr)
