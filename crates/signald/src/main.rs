@@ -24,8 +24,10 @@ fn handle_connection(
     stream: TcpStream,
     pending_peers: Arc<Mutex<HashMap<String, (PairRequest, WsStream)>>>,
 ) -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
+    println!("New connection");
     let mut ws = accept(stream)?;
     let msg = ws.read()?;
+    println!("Received: {msg}");
 
     let pair_request = msg
         .to_text()
@@ -89,7 +91,11 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         let stream = stream?;
 
         let p = pending_peers.clone();
-        thread::spawn(move || handle_connection(stream, p));
+        thread::spawn(move || {
+            if let Err(e) = handle_connection(stream, p) {
+                eprintln!("Connection error: {e}");
+            }
+        });
     }
 
     Ok(())
