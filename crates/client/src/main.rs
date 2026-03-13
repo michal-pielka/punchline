@@ -1,3 +1,4 @@
+use punchline_client::message;
 use punchline_client::punch;
 use punchline_client::signal;
 use punchline_client::stun;
@@ -20,9 +21,9 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     info!(%peer_addr, peer_key = %peer.target_public_key, "Paired with peer");
 
     punch::establish(&sock, peer_addr)?;
-
-    // TODO: messaging loop goes here
     info!("Connection established, ready for messages");
+
+    let _ = message::start(&sock, peer_addr);
 
     Ok(())
 }
