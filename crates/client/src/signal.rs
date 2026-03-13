@@ -7,10 +7,10 @@ pub fn pair_with_peer(
     external_addr: SocketAddr,
     public_key: String,
     peer_public_key: String,
-    signal_server: SocketAddr,
+    signal_addr: SocketAddr,
 ) -> Result<PairResponse, Box<dyn std::error::Error>> {
-    debug!(%signal_server, "Connecting to signal server");
-    let (mut sock, _response) = connect(format!("ws://{}", signal_server))?;
+    debug!(%signal_addr, "Connecting to signal server");
+    let (mut sock, _response) = connect(format!("ws://{}", signal_addr))?;
 
     let pair_request = PairRequest {
         external_addr,

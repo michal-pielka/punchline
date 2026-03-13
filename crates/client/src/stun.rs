@@ -5,12 +5,10 @@ use punchline_proto::transport::Transport;
 use punchline_proto::udp::UdpTransport;
 use tracing::debug;
 
-const CLIENT_ADDRESS: &str = "0.0.0.0:0";
+const CLIENT_ADDR: &str = "0.0.0.0:0";
 
-pub fn get_external_address(
-    stun_addr: SocketAddr,
-) -> Result<SocketAddr, Box<dyn std::error::Error>> {
-    let sock = UdpTransport::new(UdpSocket::bind(CLIENT_ADDRESS)?);
+pub fn get_external_addr(stun_addr: SocketAddr) -> Result<SocketAddr, Box<dyn std::error::Error>> {
+    let sock = UdpTransport::new(UdpSocket::bind(CLIENT_ADDR)?);
 
     let (request, _transaction_id) = build_binding_request();
     debug!(%stun_addr, "Sending STUN binding request");
