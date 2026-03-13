@@ -9,6 +9,9 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     loop {
         let (len, src_addr) = sock.recv_from(&mut buf).unwrap();
+
+        println!("Received: {len} bytes from {src_addr}");
+
         let request = &buf[..len];
 
         if let Err(e) = sock.send_to(request, src_addr) {
