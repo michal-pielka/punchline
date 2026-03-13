@@ -7,7 +7,9 @@ use tracing::debug;
 
 const CLIENT_ADDR: &str = "0.0.0.0:0";
 
-pub fn get_external_addr(stun_addr: SocketAddr) -> Result<SocketAddr, Box<dyn std::error::Error>> {
+pub fn get_external_addr(
+    stun_addr: SocketAddr,
+) -> Result<(SocketAddr, UdpTransport), Box<dyn std::error::Error>> {
     let sock = UdpTransport::new(UdpSocket::bind(CLIENT_ADDR)?);
 
     let (request, _transaction_id) = build_binding_request();
@@ -19,5 +21,5 @@ pub fn get_external_addr(stun_addr: SocketAddr) -> Result<SocketAddr, Box<dyn st
 
     let addr = parse_xor_mapped_address(&buf[..len]).ok_or("Failed to parse address")?;
 
-    Ok(addr)
+    Ok((addr, sock))
 }
