@@ -4,5 +4,6 @@ version = "0.1.0"
 edition = "2024"
 
 [dependencies]
+punchline-proto = { path = "../proto" }
 serde_json = "1.0.149"
 tungstenite = "0.28.0"
