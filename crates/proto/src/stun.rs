@@ -94,6 +94,52 @@ pub fn build_binding_response(transaction_id: &[u8; 12], src_addr: SocketAddr) -
     Some(resp)
 }
 
+// Parse a XOR-MAPPED-ADDRESS from a Binding Response buffer.
+// Returns the decoded SocketAddr. Only supports IPv4.
+pub fn parse_xor_mapped_address(buf: &[u8]) -> Option<SocketAddr> {
+    let header = parse_header(buf)?;
+
+    if header.msg_type != BINDING_RESPONSE {
+        return None;
+    }
+
+    // Walk attributes after the 20-byte header
+    let mut pos = HEADER_SIZE;
+    while pos + 4 <= buf.len() {
+        let attr_type = u16::from_be_bytes([buf[pos], buf[pos + 1]]);
+        let attr_len = u16::from_be_bytes([buf[pos + 2], buf[pos + 3]]) as usize;
+
+        if pos + 4 + attr_len > buf.len() {
+            return None;
+        }
+
+        if attr_type == ATTR_XOR_MAPPED_ADDRESS {
+            let value = &buf[pos + 4..pos + 4 + attr_len];
+            if value.len() < 8 || value[1] != FAMILY_IPV4 {
+                return None;
+            }
+
+            let xor_port = u16::from_be_bytes([value[2], value[3]]);
+            let port = xor_port ^ (MAGIC_COOKIE >> 16) as u16;
+
+            let cookie_bytes = MAGIC_COOKIE.to_be_bytes();
+            let ip = std::net::Ipv4Addr::new(
+                value[4] ^ cookie_bytes[0],
+                value[5] ^ cookie_bytes[1],
+                value[6] ^ cookie_bytes[2],
+                value[7] ^ cookie_bytes[3],
+            );
+
+            return Some(SocketAddr::new(ip.into(), port));
+        }
+
+        // Skip to next attribute (padded to 4-byte boundary)
+        pos += 4 + ((attr_len + 3) & !3);
+    }
+
+    None
+}
+
 // Build a Binding Request with a random transaction ID.
 // Returns (request_bytes, transaction_id).
 pub fn build_binding_request() -> (Vec<u8>, [u8; 12]) {
