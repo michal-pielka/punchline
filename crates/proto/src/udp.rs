@@ -10,6 +10,12 @@ impl UdpTransport {
     pub fn new(socket: UdpSocket) -> Self {
         Self { socket }
     }
+
+    pub fn try_clone(&self) -> std::io::Result<Self> {
+        Ok(Self {
+            socket: self.socket.try_clone()?,
+        })
+    }
 }
 
 impl Transport for UdpTransport {
