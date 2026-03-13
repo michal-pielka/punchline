@@ -1,0 +1,40 @@
+# install with pre-commit install
+
+default_install_hook_types:
+  - commit-msg
+  - pre-commit
+
+repos:
+  - repo: local
+    hooks:
+      - id: needs-prefix
+        name: commit message needs to have a prefix
+        language: pygrep
+        entry: '^(chore|ci|style|test|feat|fix|build|docs|refactor)!?(\([a-z]+\))?: (?![A-Z])(?![a-z]+(ed|ing)\s).*$'
+        args:
+          - '--multiline'
+          - '--negate'
+        stages:
+          - commit-msg
+
+      - id: rustfmt
+        name: rustfmt (format .rs files)
+        entry: rustfmt --edition 2024
+        language: system
+        files: '\.rs$'
+        stages:
+          - pre-commit
+
+      - id: clippy
+        name: clippy (lint .rs files)
+        entry: cargo clippy --allow-dirty --fix -- -D warnings
+        language: system
+        pass_filenames: false
+        stages:
+          - pre-commit
+
+  - repo: https://github.com/pre-commit/pre-commit-hooks
+    rev: v6.0.0
+    hooks:
+      - id: trailing-whitespace
+      - id: end-of-file-fixer
