@@ -3,9 +3,16 @@
 version = 4
 
 [[package]]
+name = "punchline-proto"
+version = "0.1.0"
+
+[[package]]
 name = "signald"
 version = "0.1.0"
 
 [[package]]
 name = "stund"
 version = "0.1.0"
+dependencies = [
+ "punchline-proto",
+]
