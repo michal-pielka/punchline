@@ -4,7 +4,7 @@ use std::thread;
 
 use punchline_proto::transport::Transport;
 use punchline_proto::udp::UdpTransport;
-use tracing::{debug, error};
+use tracing::{debug, error, info};
 
 const MSG_PREFIX: u8 = 0x02;
 
@@ -32,6 +32,28 @@ fn send_loop(
     }
 }
 
+fn recv_loop(
+    transport: &UdpTransport,
+    peer_addr: SocketAddr,
+) -> Result<(), Box<dyn std::error::Error>> {
+    let mut buf = [0u8; 1024];
+
+    loop {
+        let (len, src_addr) = transport.recv_from(&mut buf)?;
+
+        if src_addr != peer_addr {
+            continue;
+        }
+
+        if len == 0 || buf[0] != MSG_PREFIX {
+            continue;
+        }
+
+        let msg = String::from_utf8_lossy(&buf[1..len]);
+        info!("{msg}");
+    }
+}
+
 pub fn start(
     transport: &UdpTransport,
     peer_addr: SocketAddr,
@@ -43,6 +65,8 @@ pub fn start(
             error!(%e, "Send loop error");
         }
     });
+
+    recv_loop(transport, peer_addr)?;
 
     Ok(())
 }
