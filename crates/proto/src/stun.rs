@@ -44,3 +44,52 @@ pub fn parse_header(buf: &[u8]) -> Option<StunHeader> {
         transaction_id,
     })
 }
+
+// Returns true if the message type is a Binding Request.
+pub fn is_binding_request(header: &StunHeader) -> bool {
+    header.msg_type == BINDING_REQUEST
+}
+
+// Build a complete Binding Response with XOR-MAPPED-ADDRESS for the given source address.
+// Only supports IPv4.
+pub fn build_binding_response(transaction_id: &[u8; 12], src_addr: SocketAddr) -> Option<Vec<u8>> {
+    let (ip_bytes, port) = match src_addr {
+        SocketAddr::V4(addr) => (addr.ip().octets(), addr.port()),
+        SocketAddr::V6(_) => return None, // IPv6 not supported yet
+    };
+
+    // XOR the port with the top 16 bits of the magic cookie
+    let xor_port = port ^ (MAGIC_COOKIE >> 16) as u16;
+
+    // XOR the IP with the full magic cookie
+    let cookie_bytes = MAGIC_COOKIE.to_be_bytes();
+    let xor_ip = [
+        ip_bytes[0] ^ cookie_bytes[0],
+        ip_bytes[1] ^ cookie_bytes[1],
+        ip_bytes[2] ^ cookie_bytes[2],
+        ip_bytes[3] ^ cookie_bytes[3],
+    ];
+
+    // XOR-MAPPED-ADDRESS attribute: 4 bytes attr header + 8 bytes value = 12 bytes
+    let attr_value_len: u16 = 8;
+    let attr_total_len: u16 = 4 + attr_value_len; // type(2) + length(2) + value(8)
+
+    // Total message: 20 byte header + 12 byte attribute
+    let mut resp = Vec::with_capacity(HEADER_SIZE + attr_total_len as usize);
+
+    // Header
+    resp.extend_from_slice(&BINDING_RESPONSE.to_be_bytes());
+    resp.extend_from_slice(&attr_total_len.to_be_bytes()); // message length = bytes after header
+    resp.extend_from_slice(&MAGIC_COOKIE.to_be_bytes());
+    resp.extend_from_slice(transaction_id);
+
+    // XOR-MAPPED-ADDRESS attribute
+    resp.extend_from_slice(&ATTR_XOR_MAPPED_ADDRESS.to_be_bytes());
+    resp.extend_from_slice(&attr_value_len.to_be_bytes());
+    resp.push(0x00); // reserved
+    resp.push(FAMILY_IPV4);
+    resp.extend_from_slice(&xor_port.to_be_bytes());
+    resp.extend_from_slice(&xor_ip);
+
+    Some(resp)
+}
