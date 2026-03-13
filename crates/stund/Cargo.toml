@@ -5,3 +5,5 @@ edition = "2024"
 
 [dependencies]
 punchline-proto = { path = "../proto" }
+tracing = "0.1"
+tracing-subscriber = "0.3"

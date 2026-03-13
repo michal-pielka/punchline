@@ -3,42 +3,42 @@ use std::net::UdpSocket;
 use punchline_proto::stun;
 use punchline_proto::transport::Transport;
 use punchline_proto::udp::UdpTransport;
+use tracing::{debug, error, info, warn};
 
 const ADDRESS: &str = "0.0.0.0";
 const PORT: &str = "3478";
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
+    tracing_subscriber::fmt::init();
+
     let sock = UdpTransport::new(UdpSocket::bind(format!("{}:{}", ADDRESS, PORT))?);
     let mut buf = [0u8; 1024];
 
-    println!("STUN server listening on {ADDRESS}:{PORT}");
+    info!("STUN server listening on {ADDRESS}:{PORT}");
 
     loop {
         let (len, src_addr) = sock.recv_from(&mut buf)?;
         let request = &buf[..len];
 
         let Some(header) = stun::parse_header(request) else {
-            eprintln!("Invalid STUN packet from {src_addr}");
+            warn!(%src_addr, "Invalid STUN packet");
             continue;
         };
 
         if !stun::is_binding_request(&header) {
-            eprintln!(
-                "Not a Binding Request from {src_addr}, type=0x{:04x}",
-                header.msg_type
-            );
+            warn!(%src_addr, msg_type = format_args!("0x{:04x}", header.msg_type), "Unexpected message type");
             continue;
         }
 
-        println!("Binding Request from {src_addr}");
+        debug!(%src_addr, "Binding Request");
 
         let Some(response) = stun::build_binding_response(&header.transaction_id, src_addr) else {
-            eprintln!("Failed to build response for {src_addr} (IPv6 not supported)");
+            warn!(%src_addr, "Failed to build response (IPv6 not supported)");
             continue;
         };
 
         if let Err(e) = sock.send_to(&response, src_addr) {
-            eprintln!("Send error: {e}");
+            error!(%src_addr, %e, "Failed to send response");
         }
     }
 }

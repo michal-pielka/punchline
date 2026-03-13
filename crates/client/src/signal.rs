@@ -1,5 +1,6 @@
 use punchline_proto::signal::{PairRequest, PairResponse};
 use std::net::SocketAddr;
+use tracing::{debug, info};
 use tungstenite::connect;
 
 pub fn pair_with_peer(
@@ -8,6 +9,7 @@ pub fn pair_with_peer(
     peer_public_key: String,
     signal_server: SocketAddr,
 ) -> Result<PairResponse, Box<dyn std::error::Error>> {
+    debug!(%signal_server, "Connecting to signal server");
     let (mut sock, _response) = connect(format!("ws://{}", signal_server))?;
 
     let pair_request = PairRequest {
@@ -19,8 +21,10 @@ pub fn pair_with_peer(
     let json = serde_json::to_string(&pair_request)?;
     sock.send(tungstenite::Message::Text(json.into()))?;
 
-    let msg = sock.read()?;
-    let peer_address = serde_json::from_str::<PairResponse>(msg.to_text()?)?;
+    info!("Pair request sent, waiting for match...");
 
-    Ok(peer_address)
+    let msg = sock.read()?;
+    let pair_response = serde_json::from_str::<PairResponse>(msg.to_text()?)?;
+
+    Ok(pair_response)
 }
