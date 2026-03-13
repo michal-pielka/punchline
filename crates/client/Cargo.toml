@@ -6,7 +6,6 @@ edition = "2024"
 [dependencies]
 punchline-proto = { path = "../proto" }
 serde_json = "1.0.149"
-thread = "0.1.0"
 tracing = "0.1"
 tracing-subscriber = "0.3"
 tungstenite = "0.28.0"
