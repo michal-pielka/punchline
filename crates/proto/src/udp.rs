@@ -14,4 +14,8 @@ impl Transport for UdpTransport {
     fn recv_from(&self, buf: &mut [u8]) -> Result<(usize, std::net::SocketAddr), std::io::Error> {
         self.socket.recv_from(buf)
     }
+
+    fn local_addr(&self) -> Result<std::net::SocketAddr, std::io::Error> {
+        self.socket.local_addr()
+    }
 }
