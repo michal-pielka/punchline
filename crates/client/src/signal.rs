@@ -1,7 +1,8 @@
-use punchline_proto::signal::{PairRequest, PairResponse};
 use std::net::SocketAddr;
+
+use punchline_proto::signal::{PairRequest, PairResponse};
 use tracing::{debug, info};
-use tungstenite::connect;
+use tungstenite;
 
 pub fn pair_with_peer(
     external_addr: SocketAddr,
@@ -10,7 +11,7 @@ pub fn pair_with_peer(
     signal_addr: SocketAddr,
 ) -> Result<PairResponse, Box<dyn std::error::Error>> {
     debug!(%signal_addr, "Connecting to signal server");
-    let (mut sock, _response) = connect(format!("ws://{}", signal_addr))?;
+    let (mut sock, _response) = tungstenite::connect(format!("ws://{}", signal_addr))?;
 
     let pair_request = PairRequest {
         external_addr,
