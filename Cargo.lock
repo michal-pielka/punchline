@@ -270,6 +270,7 @@ dependencies = [
 name = "punchline-client"
 version = "0.1.0"
 dependencies = [
+ "ed25519-dalek",
  "punchline-proto",
  "serde_json",
  "tracing",

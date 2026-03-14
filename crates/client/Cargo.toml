@@ -4,6 +4,7 @@ version = "0.1.0"
 edition = "2024"
 
 [dependencies]
+ed25519-dalek = "2.2.0"
 punchline-proto = { path = "../proto" }
 serde_json = "1.0.149"
 tracing = "0.1"
