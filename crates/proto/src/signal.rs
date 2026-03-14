@@ -1,3 +1,4 @@
+use ed25519_dalek::{Signature, VerifyingKey};
 use serde::{Deserialize, Serialize};
 use std::net::SocketAddr;
 
@@ -10,6 +11,22 @@ pub struct PairRequest {
     pub public_key: String,
     pub target_public_key: String,
     pub signature: String,
+}
+
+impl PairRequest {
+    pub fn new(
+        external_addr: SocketAddr,
+        public_key: &VerifyingKey,
+        target_public_key: &VerifyingKey,
+        signature: &Signature,
+    ) -> PairRequest {
+        PairRequest {
+            external_addr,
+            public_key: hex::encode(public_key.as_bytes()),
+            target_public_key: hex::encode(target_public_key.as_bytes()),
+            signature: hex::encode(signature.to_bytes()),
+        }
+    }
 }
 
 #[derive(Serialize, Deserialize)]
