@@ -2,9 +2,17 @@ use std::net::SocketAddr;
 
 use ed25519_dalek::{Signature, Signer, SigningKey, VerifyingKey};
 use rand_core::OsRng;
+use x25519_dalek::{EphemeralSecret, PublicKey};
 
 pub fn generate_identity() -> SigningKey {
     SigningKey::generate(&mut OsRng)
+}
+
+pub fn generate_x25519_keypair() -> (EphemeralSecret, PublicKey) {
+    let secret_key = EphemeralSecret::random_from_rng(OsRng);
+    let public_key = PublicKey::from(&secret_key);
+
+    (secret_key, public_key)
 }
 
 pub fn sign_handshake(
