@@ -36,6 +36,18 @@ pub fn verify_handshake(
     Ok(())
 }
 
+pub fn sign_ephemeral_key(signing_key: &SigningKey, ephemeral_public: &PublicKey) -> Signature {
+    signing_key.sign(ephemeral_public.as_bytes())
+}
+
+pub fn verify_ephemeral_key(
+    verifying_key: &VerifyingKey,
+    ephemeral_public: &PublicKey,
+    signature: &Signature,
+) -> Result<(), ed25519_dalek::SignatureError> {
+    verifying_key.verify_strict(ephemeral_public.as_bytes(), signature)
+}
+
 fn build_handshake_message(
     external_addr: SocketAddr,
     public_key: &VerifyingKey,
