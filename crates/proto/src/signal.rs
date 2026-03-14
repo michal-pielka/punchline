@@ -9,6 +9,7 @@ pub struct PairRequest {
     // Used to identify both parties of the communication - TODO: signatures
     pub public_key: String,
     pub target_public_key: String,
+    pub signature: String,
 }
 
 #[derive(Serialize, Deserialize)]

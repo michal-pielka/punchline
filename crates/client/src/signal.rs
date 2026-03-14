@@ -8,6 +8,7 @@ pub fn pair_with_peer(
     external_addr: SocketAddr,
     public_key: String,
     peer_public_key: String,
+    signature: String,
     signal_addr: SocketAddr,
 ) -> Result<PairResponse, Box<dyn std::error::Error>> {
     debug!(%signal_addr, "Connecting to signal server");
@@ -17,6 +18,7 @@ pub fn pair_with_peer(
         external_addr,
         public_key,
         target_public_key: peer_public_key,
+        signature,
     };
 
     let json = serde_json::to_string(&pair_request)?;
