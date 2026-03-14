@@ -2,9 +2,10 @@ use std::io;
 use std::net::SocketAddr;
 use std::thread;
 
-use chacha20poly1305::{ChaCha20Poly1305, KeyInit};
+use chacha20poly1305::{AeadCore, ChaCha20Poly1305, KeyInit, aead::Aead};
 use punchline_proto::transport::Transport;
 use punchline_proto::udp::UdpTransport;
+use rand_core::OsRng;
 use tracing::{debug, error, info};
 use x25519_dalek::SharedSecret;
 
@@ -27,10 +28,17 @@ fn send_loop(
             continue;
         }
 
-        let mut payload = vec![MSG_PREFIX];
-        payload.extend_from_slice(trimmed.as_bytes());
+        let mut message_plain = vec![MSG_PREFIX];
+        message_plain.extend_from_slice(trimmed.as_bytes());
 
-        transport.send_to(&payload, peer_addr)?;
+        let nonce = ChaCha20Poly1305::generate_nonce(OsRng);
+        let message_encrypted = cipher.encrypt(&nonce, message_plain.as_ref()).unwrap(); // TODO: error
+
+        let mut packet = Vec::new();
+        packet.extend_from_slice(&nonce);
+        packet.extend_from_slice(&message_encrypted);
+
+        transport.send_to(&packet, peer_addr)?;
         debug!("Sent: {trimmed}");
     }
 }
