@@ -7,7 +7,7 @@ use x25519_dalek::{PublicKey, SharedSecret};
 pub fn exchange_keys<T: Transport>(
     signing_key: &SigningKey,
     verifying_key: &VerifyingKey,
-    transport: T,
+    transport: &T,
     peer_addr: SocketAddr,
 ) -> Result<SharedSecret, Box<dyn std::error::Error>> {
     // Create ephemeral keypair
