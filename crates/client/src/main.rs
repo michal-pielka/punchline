@@ -48,7 +48,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     let shared_secret = handshake::exchange_keys(&identity, &peer_public_key, &sock, peer_addr)?;
 
-    message::start(&sock, peer_addr)?;
+    message::start(&shared_secret, &sock, peer_addr)?;
 
     Ok(())
 }
