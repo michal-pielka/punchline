@@ -1,25 +1,26 @@
 use std::net::SocketAddr;
 
-use punchline_proto::signal::{PairRequest, PairResponse};
+use ed25519_dalek::{SigningKey, VerifyingKey};
+use punchline_proto::{
+    crypto::sign_handshake,
+    signal::{PairRequest, PairResponse},
+};
 use tracing::{debug, info};
 use tungstenite;
 
 pub fn pair_with_peer(
+    signing_key: SigningKey,
     external_addr: SocketAddr,
-    public_key: String,
-    peer_public_key: String,
-    signature: String,
+    public_key: VerifyingKey,
+    peer_public_key: VerifyingKey,
     signal_addr: SocketAddr,
 ) -> Result<PairResponse, Box<dyn std::error::Error>> {
     debug!(%signal_addr, "Connecting to signal server");
     let (mut sock, _response) = tungstenite::connect(format!("ws://{}", signal_addr))?;
 
-    let pair_request = PairRequest {
-        external_addr,
-        public_key,
-        target_public_key: peer_public_key,
-        signature,
-    };
+    let signature = sign_handshake(&signing_key, external_addr, &public_key, &peer_public_key);
+
+    let pair_request = PairRequest::new(external_addr, &public_key, &peer_public_key, &signature);
 
     let json = serde_json::to_string(&pair_request)?;
     sock.send(tungstenite::Message::Text(json.into()))?;
