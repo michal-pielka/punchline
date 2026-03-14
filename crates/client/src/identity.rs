@@ -17,7 +17,7 @@ pub fn load_identity(path: Option<PathBuf>) -> Result<SigningKey, Box<dyn std::e
 }
 
 pub fn write_identity(
-    identity: SigningKey,
+    identity: &SigningKey,
     path: Option<PathBuf>,
 ) -> Result<(), Box<dyn std::error::Error>> {
     let key_path = path.unwrap_or_else(|| {
