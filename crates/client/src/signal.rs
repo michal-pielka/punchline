@@ -9,18 +9,18 @@ use tracing::{debug, info};
 use tungstenite;
 
 pub fn pair_with_peer(
-    signing_key: SigningKey,
+    signing_key: &SigningKey,
     external_addr: SocketAddr,
-    public_key: VerifyingKey,
-    peer_public_key: VerifyingKey,
+    public_key: &VerifyingKey,
+    peer_public_key: &VerifyingKey,
     signal_addr: SocketAddr,
 ) -> Result<PairResponse, Box<dyn std::error::Error>> {
     debug!(%signal_addr, "Connecting to signal server");
     let (mut sock, _response) = tungstenite::connect(format!("ws://{}", signal_addr))?;
 
-    let signature = sign_handshake(&signing_key, external_addr, &public_key, &peer_public_key);
+    let signature = sign_handshake(signing_key, external_addr, public_key, peer_public_key);
 
-    let pair_request = PairRequest::new(external_addr, &public_key, &peer_public_key, &signature);
+    let pair_request = PairRequest::new(external_addr, public_key, peer_public_key, &signature);
 
     let json = serde_json::to_string(&pair_request)?;
     sock.send(tungstenite::Message::Text(json.into()))?;
