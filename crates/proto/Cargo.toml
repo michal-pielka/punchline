@@ -6,3 +6,4 @@ edition = "2024"
 [dependencies]
 ed25519-dalek = "2.2.0"
 serde = { version = "1.0.228", features = ["derive"] }
+x25519-dalek = "2.0.1"
