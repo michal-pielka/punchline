@@ -13,9 +13,28 @@ pub fn sign_handshake(
     public_key: &VerifyingKey,
     target_public_key: &VerifyingKey,
 ) -> Signature {
-    let mut message = Vec::new();
+    let message = build_handshake_message(external_addr, public_key, target_public_key);
+    signing_key.sign(&message)
+}
 
-    // external_addr
+pub fn verify_handshake(
+    external_addr: SocketAddr,
+    public_key: &VerifyingKey,
+    target_public_key: &VerifyingKey,
+    verifying_key: &VerifyingKey,
+    signature: &Signature,
+) -> Result<(), Box<dyn std::error::Error>> {
+    let message = build_handshake_message(external_addr, public_key, target_public_key);
+    verifying_key.verify_strict(&message, signature)?;
+    Ok(())
+}
+
+fn build_handshake_message(
+    external_addr: SocketAddr,
+    public_key: &VerifyingKey,
+    target_public_key: &VerifyingKey,
+) -> Vec<u8> {
+    let mut message = Vec::new();
     match external_addr {
         SocketAddr::V4(v4) => {
             message.extend_from_slice(&v4.ip().octets());
@@ -26,11 +45,7 @@ pub fn sign_handshake(
             message.extend_from_slice(&v6.port().to_be_bytes());
         }
     }
-
-    // public_key
     message.extend_from_slice(public_key.as_bytes());
-
-    // target_public_key
     message.extend_from_slice(target_public_key.as_bytes());
-    signing_key.sign(&message)
+    message
 }
