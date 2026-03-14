@@ -2,7 +2,7 @@ use std::io;
 use std::net::SocketAddr;
 use std::thread;
 
-use chacha20poly1305::{AeadCore, ChaCha20Poly1305, KeyInit, aead::Aead};
+use chacha20poly1305::{AeadCore, ChaCha20Poly1305, KeyInit, Nonce, aead::Aead};
 use punchline_proto::transport::Transport;
 use punchline_proto::udp::UdpTransport;
 use rand_core::OsRng;
@@ -61,8 +61,11 @@ fn recv_loop(
             continue;
         }
 
-        let msg = String::from_utf8_lossy(&buf[1..len]);
-        info!("{msg}");
+        let nonce = Nonce::from_slice(&buf[..12]);
+        let message_encrypted = &buf[12..];
+        let message_plain = cipher.decrypt(nonce, message_encrypted).unwrap(); // TODO: error
+        let message = String::from_utf8_lossy(&message_plain);
+        info!("{message}");
     }
 }
 
