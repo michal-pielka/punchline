@@ -1,9 +1,10 @@
 use ed25519_dalek::VerifyingKey;
-use punchline_client::identity::load_identity;
+use punchline_client::identity;
 use punchline_client::message;
 use punchline_client::punch;
 use punchline_client::signal;
 use punchline_client::stun;
+use punchline_proto::crypto;
 use tracing::info;
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
@@ -12,7 +13,14 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     let stun_addr: std::net::SocketAddr = std::env::var("STUN_ADDRESS")?.parse()?;
     let signal_addr: std::net::SocketAddr = std::env::var("SIGNAL_ADDRESS")?.parse()?;
 
-    let identity = load_identity(None)?;
+    let identity = match identity::load_identity(None) {
+        Ok(key) => key,
+        Err(_) => {
+            let key = crypto::generate_identity();
+            identity::write_identity(&key, None)?;
+            key
+        }
+    };
     let public_key = identity.verifying_key();
 
     let peer_public_key_string = std::env::var("PEER_PUB_KEY")?;
