@@ -24,12 +24,14 @@ pub fn exchange_keys<T: Transport>(
     transport.send_to(&packet, peer_addr)?;
 
     // Receive peer's ephemeral public and signature
+    // Loop to skip leftover punch packets
     let mut buf = [0u8; 1024];
-    let (len, _peer_addr) = transport.recv_from(&mut buf)?;
-
-    if len != 96 {
-        return Err("Invalid key exchange packet".into());
-    }
+    let len = loop {
+        let (len, src_addr) = transport.recv_from(&mut buf)?;
+        if src_addr == peer_addr && len == 96 {
+            break len;
+        }
+    };
 
     let peer_ephemeral_public_bytes: [u8; 32] = buf[..32].try_into()?;
     let peer_ephemeral_public = PublicKey::from(peer_ephemeral_public_bytes);
