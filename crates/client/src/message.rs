@@ -2,13 +2,16 @@ use std::io;
 use std::net::SocketAddr;
 use std::thread;
 
+use chacha20poly1305::{ChaCha20Poly1305, KeyInit};
 use punchline_proto::transport::Transport;
 use punchline_proto::udp::UdpTransport;
 use tracing::{debug, error, info};
+use x25519_dalek::SharedSecret;
 
 const MSG_PREFIX: u8 = 0x02;
 
 fn send_loop(
+    cipher: ChaCha20Poly1305,
     transport: UdpTransport,
     peer_addr: SocketAddr,
 ) -> Result<(), Box<dyn std::error::Error>> {
@@ -33,6 +36,7 @@ fn send_loop(
 }
 
 fn recv_loop(
+    cipher: ChaCha20Poly1305,
     transport: &UdpTransport,
     peer_addr: SocketAddr,
 ) -> Result<(), Box<dyn std::error::Error>> {
@@ -55,18 +59,24 @@ fn recv_loop(
 }
 
 pub fn start(
+    shared_secret: &SharedSecret,
     transport: &UdpTransport,
     peer_addr: SocketAddr,
 ) -> Result<(), Box<dyn std::error::Error>> {
     let send_transport = transport.try_clone()?;
 
+    let key_bytes = shared_secret.as_bytes();
+    let key = chacha20poly1305::Key::from_slice(key_bytes);
+    let send_cipher = ChaCha20Poly1305::new(key);
+    let recv_cipher = send_cipher.clone();
+
     thread::spawn(move || {
-        if let Err(e) = send_loop(send_transport, peer_addr) {
+        if let Err(e) = send_loop(send_cipher, send_transport, peer_addr) {
             error!(%e, "Send loop error");
         }
     });
 
-    recv_loop(transport, peer_addr)?;
+    recv_loop(recv_cipher, transport, peer_addr)?;
 
     Ok(())
 }
