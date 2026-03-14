@@ -41,11 +41,19 @@ fn handle_connection(
         "Pair request"
     );
 
-    let mut map = pending_peers.lock().unwrap();
+    // Check for mutual match: target is waiting AND wants to talk to us
+    let is_mutual = {
+        let map = pending_peers.lock().unwrap();
+        map.get(&pair_request.target_public_key)
+            .is_some_and(|(waiting, _)| waiting.target_public_key == pair_request.public_key)
+    };
 
-    // Is target already connected?
-    if let Some((target_pair_request, mut target_ws)) = map.remove(&pair_request.target_public_key)
-    {
+    if is_mutual {
+        let (target_pair_request, mut target_ws) = {
+            let mut map = pending_peers.lock().unwrap();
+            map.remove(&pair_request.target_public_key).unwrap()
+        };
+
         let pair_response = PairResponse {
             target_external_addr: target_pair_request.external_addr,
             target_public_key: target_pair_request.public_key,
@@ -55,8 +63,6 @@ fn handle_connection(
             target_external_addr: pair_request.external_addr,
             target_public_key: pair_request.public_key,
         };
-
-        drop(map);
 
         info!(
             peer_a = %pair_response.target_public_key,
@@ -71,6 +77,7 @@ fn handle_connection(
             error!(%e, "Failed to send response to waiting peer");
         }
     } else {
+        let mut map = pending_peers.lock().unwrap();
         info!(
             peer = %pair_request.public_key,
             target = %pair_request.target_public_key,
