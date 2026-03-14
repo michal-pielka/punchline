@@ -23,7 +23,5 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     punch::establish(&sock, peer_addr)?;
     info!("Connection established, ready for messages");
 
-    let _ = message::start(&sock, peer_addr);
-
-    Ok(())
+    message::start(&sock, peer_addr)
 }
