@@ -1,6 +1,6 @@
 use std::net::SocketAddr;
 
-use ed25519_dalek::{Signature, Signer, SigningKey, VerifyingKey};
+use ed25519_dalek::{Signature, SignatureError, Signer, SigningKey, VerifyingKey};
 use rand_core::OsRng;
 use x25519_dalek::{EphemeralSecret, PublicKey};
 
@@ -30,7 +30,7 @@ pub fn verify_handshake(
     public_key: &VerifyingKey,
     target_public_key: &VerifyingKey,
     signature: &Signature,
-) -> Result<(), Box<dyn std::error::Error>> {
+) -> Result<(), SignatureError> {
     let message = build_handshake_message(external_addr, public_key, target_public_key);
     public_key.verify_strict(&message, signature)?;
     Ok(())
@@ -44,7 +44,7 @@ pub fn verify_ephemeral_key(
     verifying_key: &VerifyingKey,
     ephemeral_public: &PublicKey,
     signature: &Signature,
-) -> Result<(), ed25519_dalek::SignatureError> {
+) -> Result<(), SignatureError> {
     verifying_key.verify_strict(ephemeral_public.as_bytes(), signature)
 }
 
