@@ -1,3 +1,4 @@
+use punchline_proto::crypto::verify_handshake;
 use std::collections::HashMap;
 use std::net::{TcpListener, TcpStream};
 use std::sync::{Arc, Mutex};
@@ -24,7 +25,7 @@ fn send_pair_response(
 fn handle_connection(
     stream: TcpStream,
     pending_peers: Arc<Mutex<HashMap<String, (PairRequest, WsStream)>>>,
-) -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
+) -> Result<(), Box<dyn std::error::Error>> {
     debug!("New connection");
     let mut ws = accept(stream)?;
     let msg = ws.read()?;
@@ -34,6 +35,17 @@ fn handle_connection(
         .ok()
         .and_then(|p| serde_json::from_str::<PairRequest>(p).ok())
         .ok_or("Invalid pair request.")?;
+
+    // Verify the signature
+    let verifying_key = pair_request.verifying_key()?;
+    let target_verifying_key = pair_request.target_verifying_key()?;
+    let signature = pair_request.signature()?;
+    verify_handshake(
+        pair_request.external_addr,
+        &verifying_key,
+        &target_verifying_key,
+        &signature,
+    )?;
 
     info!(
         from = %pair_request.public_key,
