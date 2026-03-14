@@ -320,6 +320,7 @@ dependencies = [
  "tracing",
  "tracing-subscriber",
  "tungstenite",
+ "x25519-dalek",
 ]
 
 [[package]]
