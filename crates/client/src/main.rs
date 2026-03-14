@@ -1,4 +1,5 @@
 use ed25519_dalek::VerifyingKey;
+use punchline_client::handshake;
 use punchline_client::identity;
 use punchline_client::message;
 use punchline_client::punch;
@@ -33,10 +34,10 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     info!(%external_addr, "Discovered external address");
 
     let peer = signal::pair_with_peer(
-        identity,
+        &identity,
         external_addr,
-        public_key,
-        peer_public_key,
+        &public_key,
+        &peer_public_key,
         signal_addr,
     )?;
     let peer_addr = peer.target_external_addr;
@@ -44,6 +45,8 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     punch::establish(&sock, peer_addr)?;
     info!("Connection established, ready for messages");
+
+    let shared_secret = handshake::exchange_keys(&identity, &peer_public_key, &sock, peer_addr)?;
 
     message::start(&sock, peer_addr)?;
 
