@@ -49,7 +49,7 @@ impl PairRequest {
     pub fn signature(&self) -> Result<Signature, Box<dyn std::error::Error>> {
         let bytes: [u8; 64] = hex::decode(&self.signature)?
             .try_into()
-            .map_err(|_| "Invalid public key")?;
+            .map_err(|_| "Invalid signature")?;
 
         let signature = Signature::from_bytes(&bytes);
         Ok(signature)
