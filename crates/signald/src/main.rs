@@ -37,6 +37,7 @@ fn handle_connection(
         .ok_or("Invalid pair request.")?;
 
     // Verify the signature
+    debug!(from = %pair_request.public_key, "Verifying signature");
     let verifying_key = pair_request.verifying_key()?;
     let target_verifying_key = pair_request.target_verifying_key()?;
     let signature = pair_request.signature()?;
@@ -50,7 +51,7 @@ fn handle_connection(
     info!(
         from = %pair_request.public_key,
         to = %pair_request.target_public_key,
-        "Pair request"
+        "Signature verified, pair request accepted"
     );
 
     // Check for mutual match: target is waiting AND wants to talk to us
