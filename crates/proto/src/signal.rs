@@ -27,6 +27,33 @@ impl PairRequest {
             signature: hex::encode(signature.to_bytes()),
         }
     }
+
+    pub fn verifying_key(&self) -> Result<VerifyingKey, Box<dyn std::error::Error>> {
+        let bytes: [u8; 32] = hex::decode(&self.public_key)?
+            .try_into()
+            .map_err(|_| "Invalid public key")?;
+        let verifying_key = VerifyingKey::from_bytes(&bytes)?;
+
+        Ok(verifying_key)
+    }
+
+    pub fn target_verifying_key(&self) -> Result<VerifyingKey, Box<dyn std::error::Error>> {
+        let bytes: [u8; 32] = hex::decode(&self.target_public_key)?
+            .try_into()
+            .map_err(|_| "Invalid public key")?;
+        let target_verifying_key = VerifyingKey::from_bytes(&bytes)?;
+
+        Ok(target_verifying_key)
+    }
+
+    pub fn signature(&self) -> Result<Signature, Box<dyn std::error::Error>> {
+        let bytes: [u8; 64] = hex::decode(&self.signature)?
+            .try_into()
+            .map_err(|_| "Invalid public key")?;
+
+        let signature = Signature::from_bytes(&bytes);
+        Ok(signature)
+    }
 }
 
 #[derive(Serialize, Deserialize)]
