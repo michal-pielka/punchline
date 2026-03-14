@@ -57,14 +57,19 @@ fn recv_loop(
             continue;
         }
 
-        if len == 0 || buf[0] != MSG_PREFIX {
+        if len < 12 {
             continue;
         }
 
         let nonce = Nonce::from_slice(&buf[..12]);
-        let message_encrypted = &buf[12..];
+        let message_encrypted = &buf[12..len];
         let message_plain = cipher.decrypt(nonce, message_encrypted).unwrap(); // TODO: error
-        let message = String::from_utf8_lossy(&message_plain);
+
+        if message_plain.is_empty() || message_plain[0] != MSG_PREFIX {
+            continue;
+        }
+
+        let message = String::from_utf8_lossy(&message_plain[1..]);
         info!("{message}");
     }
 }
