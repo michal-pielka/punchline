@@ -21,11 +21,10 @@ pub fn verify_handshake(
     external_addr: SocketAddr,
     public_key: &VerifyingKey,
     target_public_key: &VerifyingKey,
-    verifying_key: &VerifyingKey,
     signature: &Signature,
 ) -> Result<(), Box<dyn std::error::Error>> {
     let message = build_handshake_message(external_addr, public_key, target_public_key);
-    verifying_key.verify_strict(&message, signature)?;
+    public_key.verify_strict(&message, signature)?;
     Ok(())
 }
 
