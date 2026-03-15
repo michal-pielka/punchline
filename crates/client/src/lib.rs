@@ -1,3 +1,4 @@
+pub mod cli;
 pub mod handshake;
 pub mod identity;
 pub mod message;
