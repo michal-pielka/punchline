@@ -39,6 +39,12 @@ pub enum Command {
         action: ConfigAction,
     },
 
+    /// Manage known peers
+    Peers {
+        #[command(subcommand)]
+        action: PeersAction,
+    },
+
     /// Connect to a peer
     Connect {
         /// Peer's public key (64 hex chars)
@@ -61,4 +67,22 @@ pub enum ConfigAction {
 
     /// Show current config values
     Show,
+}
+
+#[derive(Subcommand)]
+pub enum PeersAction {
+    /// Add a peer
+    Add {
+        /// Nickname for the peer
+        name: String,
+
+        /// Peer's public key (64 hex chars)
+        key: String,
+    },
+
+    /// Remove a peer
+    Remove {
+        /// Nickname of the peer to remove
+        name: String,
+    },
 }
