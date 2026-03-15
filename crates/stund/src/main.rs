@@ -1,24 +1,37 @@
 use std::net::UdpSocket;
 
 use anyhow::Context;
+use clap::Parser;
 use punchline_proto::stun;
 use punchline_proto::transport::Transport;
 use punchline_proto::udp::UdpTransport;
+use punchline_stund::cli::Args;
 use tracing::{debug, error, info, warn};
 
-const ADDRESS: &str = "0.0.0.0";
-const PORT: &str = "3478";
-
 fn main() -> anyhow::Result<()> {
-    tracing_subscriber::fmt::init();
+    let args = Args::parse();
+
+    let log_level = if args.quiet {
+        None
+    } else {
+        match args.verbose {
+            0 => Some(tracing::Level::INFO),
+            1 => Some(tracing::Level::DEBUG),
+            _ => Some(tracing::Level::TRACE),
+        }
+    };
+
+    if let Some(level) = log_level {
+        tracing_subscriber::fmt().with_max_level(level).init();
+    }
 
     let sock = UdpTransport::new(
-        UdpSocket::bind(format!("{}:{}", ADDRESS, PORT))
+        UdpSocket::bind(format!("{}:{}", args.address, args.port))
             .context("Failed to bind STUN server socket")?,
     );
     let mut buf = [0u8; 1024];
 
-    info!("STUN server listening on {ADDRESS}:{PORT}");
+    info!("STUN server listening on {}:{}", args.address, args.port);
 
     loop {
         let (len, src_addr) = sock.recv_from(&mut buf)?;
