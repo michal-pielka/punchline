@@ -1,5 +1,7 @@
 use std::net::SocketAddr;
 
+use rand_core::RngCore;
+
 use crate::error::ProtoError;
 
 const MAGIC_COOKIE: u32 = 0x2112_A442;
@@ -133,15 +135,7 @@ pub fn parse_xor_mapped_address(buf: &[u8]) -> Result<SocketAddr, ProtoError> {
 
 pub fn build_binding_request() -> (Vec<u8>, [u8; 12]) {
     let mut transaction_id = [0u8; 12];
-
-    // TODO: simple random for now: read from /dev/urandom or use a crate later.
-    #[cfg(unix)]
-    {
-        use std::io::Read;
-        if let Ok(mut f) = std::fs::File::open("/dev/urandom") {
-            let _ = f.read_exact(&mut transaction_id);
-        }
-    }
+    rand_core::OsRng.fill_bytes(&mut transaction_id);
 
     let mut req = Vec::with_capacity(HEADER_SIZE);
     req.extend_from_slice(&BINDING_REQUEST.to_be_bytes());
