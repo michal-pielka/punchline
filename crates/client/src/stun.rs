@@ -17,8 +17,7 @@ pub fn get_external_addr(stun_addr: SocketAddr) -> anyhow::Result<(SocketAddr, U
     let mut buf = [0u8; 1024];
     let (len, _src) = sock.recv_from(&mut buf)?;
 
-    let addr = stun::parse_xor_mapped_address(&buf[..len])
-        .ok_or_else(|| anyhow::anyhow!("Failed to parse STUN address"))?;
+    let addr = stun::parse_xor_mapped_address(&buf[..len])?;
 
     Ok((addr, sock))
 }

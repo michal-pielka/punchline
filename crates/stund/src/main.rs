@@ -24,9 +24,12 @@ fn main() -> anyhow::Result<()> {
         let (len, src_addr) = sock.recv_from(&mut buf)?;
         let request = &buf[..len];
 
-        let Some(header) = stun::parse_header(request) else {
-            warn!(%src_addr, "Invalid STUN packet");
-            continue;
+        let header = match stun::parse_header(request) {
+            Ok(h) => h,
+            Err(e) => {
+                warn!(%src_addr, %e, "Invalid STUN packet");
+                continue;
+            }
         };
 
         if !stun::is_binding_request(&header) {
@@ -36,9 +39,12 @@ fn main() -> anyhow::Result<()> {
 
         debug!(%src_addr, "Binding Request");
 
-        let Some(response) = stun::build_binding_response(&header.transaction_id, src_addr) else {
-            warn!(%src_addr, "Failed to build response (IPv6 not supported)");
-            continue;
+        let response = match stun::build_binding_response(&header.transaction_id, src_addr) {
+            Ok(r) => r,
+            Err(e) => {
+                warn!(%src_addr, %e, "Failed to build response");
+                continue;
+            }
         };
 
         if let Err(e) = sock.send_to(&response, src_addr) {
