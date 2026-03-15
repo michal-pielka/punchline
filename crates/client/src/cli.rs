@@ -1,3 +1,5 @@
+use std::path::PathBuf;
+
 use clap::{Parser, Subcommand};
 
 #[derive(Parser)]
@@ -5,6 +7,10 @@ use clap::{Parser, Subcommand};
 pub struct Args {
     #[command(subcommand)]
     pub command: Command,
+
+    /// Path to identity key file
+    #[arg(short = 'i', long = "identity", global = true)]
+    pub identity_path: Option<PathBuf>,
 
     /// Increase log verbosity (-v debug, -vv trace)
     #[arg(short, long, global = true, action = clap::ArgAction::Count)]
