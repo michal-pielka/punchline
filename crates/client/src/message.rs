@@ -17,7 +17,7 @@ fn send_loop(
     transport: Box<dyn Transport>,
     peer_addr: SocketAddr,
 ) -> anyhow::Result<()> {
-    let mut counter: u64 = 0;
+    let mut counter: u64 = 1;
     let stdin = io::stdin();
     let mut line = String::new();
 
