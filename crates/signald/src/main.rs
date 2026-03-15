@@ -4,13 +4,12 @@ use std::sync::{Arc, Mutex};
 use std::thread;
 
 use anyhow::Context;
+use clap::Parser;
 use punchline_proto::crypto::verify_handshake;
 use punchline_proto::signal::{PairRequest, PairResponse};
+use punchline_signald::cli::Args;
 use tracing::{debug, error, info};
 use tungstenite::accept;
-
-const ADDRESS: &str = "0.0.0.0";
-const PORT: &str = "8743";
 
 type WsStream = tungstenite::WebSocket<TcpStream>;
 
@@ -104,15 +103,29 @@ fn handle_connection(
 }
 
 fn main() -> anyhow::Result<()> {
-    tracing_subscriber::fmt::init();
+    let args = Args::parse();
 
-    let listener = TcpListener::bind(format!("{}:{}", ADDRESS, PORT))
-        .context("Failed to bind signal server socket")?;
+    let log_level = if args.quiet {
+        None
+    } else {
+        match args.verbose {
+            0 => Some(tracing::Level::INFO),
+            1 => Some(tracing::Level::DEBUG),
+            _ => Some(tracing::Level::TRACE),
+        }
+    };
+
+    if let Some(level) = log_level {
+        tracing_subscriber::fmt().with_max_level(level).init();
+    }
+
+    let bind_addr = format!("{}:{}", args.address, args.port);
+    let listener = TcpListener::bind(&bind_addr).context("Failed to bind signal server socket")?;
 
     let pending_peers: Arc<Mutex<HashMap<String, (PairRequest, WsStream)>>> =
         Arc::new(Mutex::new(HashMap::new()));
 
-    info!("Signal server listening on {ADDRESS}:{PORT}");
+    info!("Signal server listening on {bind_addr}");
 
     for stream in listener.incoming() {
         let stream = stream?;
