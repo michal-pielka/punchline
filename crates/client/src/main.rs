@@ -30,7 +30,7 @@ fn main() -> anyhow::Result<()> {
         }
     };
     let public_key = identity.verifying_key();
-    println!("Public key: {}", hex::encode(public_key.to_bytes()));
+    info!(public_key = %hex::encode(public_key.to_bytes()), "Identity loaded");
 
     let peer_public_key_string = std::env::var("PEER_PUB_KEY").context("PEER_PUB_KEY not set")?;
     let peer_public_key_bytes: [u8; 32] = hex::decode(&peer_public_key_string)
