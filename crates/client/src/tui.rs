@@ -9,7 +9,41 @@ pub struct App {
     pub state: AppState,
 }
 
-pub struct AppState {}
+pub struct AppState {
+    pub phase: Phase,
+    pub steps: Vec<Step>,
+    pub my_key: String,
+    pub peer_key: String,
+    pub peer_alias: Option<String>,
+}
+
+pub enum Phase {
+    Connecting,
+    Connected,
+    Disconnected,
+}
+
+pub struct Step {
+    pub con_step: ConnectionStep,
+    pub status: StepStatus,
+    pub detail: String,
+}
+
+pub enum ConnectionStep {
+    IdentityLoaded,
+    StunResolved,
+    SignalingComplete,
+    HolePunching,
+    KeyExchange,
+    SecureChannel,
+}
+
+pub enum StepStatus {
+    Pending,
+    Active,
+    Done,
+    Failed,
+}
 
 impl App {
     pub fn run(mut self, mut terminal: DefaultTerminal) -> anyhow::Result<()> {
