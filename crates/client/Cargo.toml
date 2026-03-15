@@ -15,6 +15,7 @@ punchline-proto = { path = "../proto" }
 rand_core = { version = "0.6", features = ["getrandom"] }
 serde_json = "1.0.149"
 sha2 = "0.10.9"
+toml = "1.0.6"
 tracing = "0.1"
 tracing-subscriber = "0.3"
 tungstenite = "0.28.0"
