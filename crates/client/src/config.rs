@@ -3,9 +3,9 @@ use std::{net::SocketAddr, path::PathBuf};
 use serde::Deserialize;
 
 #[derive(Deserialize)]
-struct Config {
-    stun_address: Option<SocketAddr>,
-    signal_address: Option<SocketAddr>,
+pub struct Config {
+    pub stun_address: Option<SocketAddr>,
+    pub signal_address: Option<SocketAddr>,
 }
 
 pub fn default_config_path() -> anyhow::Result<PathBuf> {
