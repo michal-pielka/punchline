@@ -9,6 +9,7 @@ use sha2::Sha256;
 use tracing::{debug, error, info};
 use x25519_dalek::SharedSecret;
 
+// Packet type byte: 0x00 = punch probe, 0x01 = punch ACK, 0x02 = encrypted message
 const MSG_PREFIX: u8 = 0x02;
 
 fn send_loop(

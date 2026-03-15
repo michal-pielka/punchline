@@ -7,6 +7,8 @@ use std::time::{Duration, Instant};
 use punchline_proto::transport::Transport;
 use tracing::{debug, info};
 
+// Packet type bytes (first byte of every UDP packet):
+// 0x00 = punch probe, 0x01 = punch ACK, 0x02 = encrypted message
 const PUNCH_PROBE: &[u8] = &[0x00];
 const PUNCH_ACK: &[u8] = &[0x01];
 const PUNCH_INTERVAL_MS: u64 = 200;
