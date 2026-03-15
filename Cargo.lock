@@ -556,6 +556,7 @@ name = "punchline-signald"
 version = "0.1.0"
 dependencies = [
  "anyhow",
+ "clap",
  "punchline-proto",
  "serde_json",
  "tracing",
