@@ -1,22 +1,20 @@
-use punchline_proto::crypto::verify_handshake;
 use std::collections::HashMap;
 use std::net::{TcpListener, TcpStream};
 use std::sync::{Arc, Mutex};
 use std::thread;
+
+use anyhow::Context;
+use punchline_proto::crypto::verify_handshake;
+use punchline_proto::signal::{PairRequest, PairResponse};
 use tracing::{debug, error, info};
 use tungstenite::accept;
-
-use punchline_proto::signal::{PairRequest, PairResponse};
 
 const ADDRESS: &str = "0.0.0.0";
 const PORT: &str = "8743";
 
 type WsStream = tungstenite::WebSocket<TcpStream>;
 
-fn send_pair_response(
-    response: &PairResponse,
-    ws: &mut WsStream,
-) -> Result<(), Box<dyn std::error::Error>> {
+fn send_pair_response(response: &PairResponse, ws: &mut WsStream) -> anyhow::Result<()> {
     let json = serde_json::to_string(response)?;
     ws.send(tungstenite::Message::Text(json.into()))?;
     Ok(())
@@ -25,28 +23,31 @@ fn send_pair_response(
 fn handle_connection(
     stream: TcpStream,
     pending_peers: Arc<Mutex<HashMap<String, (PairRequest, WsStream)>>>,
-) -> Result<(), Box<dyn std::error::Error>> {
+) -> anyhow::Result<()> {
     debug!("New connection");
-    let mut ws = accept(stream)?;
-    let msg = ws.read()?;
+    let mut ws = accept(stream).context("WebSocket handshake failed")?;
+    let msg = ws.read().context("Failed to read message")?;
 
     let pair_request = msg
         .to_text()
         .ok()
         .and_then(|p| serde_json::from_str::<PairRequest>(p).ok())
-        .ok_or("Invalid pair request.")?;
+        .ok_or_else(|| anyhow::anyhow!("Invalid pair request"))?;
 
     // Verify the signature
     debug!(from = %pair_request.public_key, "Verifying signature");
-    let verifying_key = pair_request.verifying_key()?;
-    let target_verifying_key = pair_request.target_verifying_key()?;
-    let signature = pair_request.signature()?;
+    let verifying_key = pair_request.verifying_key().context("Invalid public key")?;
+    let target_verifying_key = pair_request
+        .target_verifying_key()
+        .context("Invalid target public key")?;
+    let signature = pair_request.signature().context("Invalid signature")?;
     verify_handshake(
         pair_request.external_addr,
         &verifying_key,
         &target_verifying_key,
         &signature,
-    )?;
+    )
+    .context("Signature verification failed")?;
 
     info!(
         from = %pair_request.public_key,
@@ -102,10 +103,11 @@ fn handle_connection(
     Ok(())
 }
 
-fn main() -> Result<(), Box<dyn std::error::Error>> {
+fn main() -> anyhow::Result<()> {
     tracing_subscriber::fmt::init();
 
-    let listener = TcpListener::bind(format!("{}:{}", ADDRESS, PORT))?;
+    let listener = TcpListener::bind(format!("{}:{}", ADDRESS, PORT))
+        .context("Failed to bind signal server socket")?;
 
     let pending_peers: Arc<Mutex<HashMap<String, (PairRequest, WsStream)>>> =
         Arc::new(Mutex::new(HashMap::new()));
@@ -118,7 +120,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         let p = pending_peers.clone();
         thread::spawn(move || {
             if let Err(e) = handle_connection(stream, p) {
-                error!(%e, "Connection error");
+                error!("{e:#}");
             }
         });
     }

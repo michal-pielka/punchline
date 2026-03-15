@@ -2,12 +2,11 @@ use ed25519_dalek::{Signature, VerifyingKey};
 use serde::{Deserialize, Serialize};
 use std::net::SocketAddr;
 
+use crate::error::ProtoError;
+
 #[derive(Serialize, Deserialize)]
 pub struct PairRequest {
-    // Used to let the server know the "hole's" address
     pub external_addr: SocketAddr,
-    // String for now, prolly needs a refactorings
-    // Used to identify both parties of the communication - TODO: signatures
     pub public_key: String,
     pub target_public_key: String,
     pub signature: String,
@@ -28,31 +27,25 @@ impl PairRequest {
         }
     }
 
-    pub fn verifying_key(&self) -> Result<VerifyingKey, Box<dyn std::error::Error>> {
+    pub fn verifying_key(&self) -> Result<VerifyingKey, ProtoError> {
         let bytes: [u8; 32] = hex::decode(&self.public_key)?
             .try_into()
-            .map_err(|_| "Invalid public key")?;
-        let verifying_key = VerifyingKey::from_bytes(&bytes)?;
-
-        Ok(verifying_key)
+            .map_err(|_| ProtoError::InvalidKeyLength)?;
+        Ok(VerifyingKey::from_bytes(&bytes)?)
     }
 
-    pub fn target_verifying_key(&self) -> Result<VerifyingKey, Box<dyn std::error::Error>> {
+    pub fn target_verifying_key(&self) -> Result<VerifyingKey, ProtoError> {
         let bytes: [u8; 32] = hex::decode(&self.target_public_key)?
             .try_into()
-            .map_err(|_| "Invalid public key")?;
-        let target_verifying_key = VerifyingKey::from_bytes(&bytes)?;
-
-        Ok(target_verifying_key)
+            .map_err(|_| ProtoError::InvalidKeyLength)?;
+        Ok(VerifyingKey::from_bytes(&bytes)?)
     }
 
-    pub fn signature(&self) -> Result<Signature, Box<dyn std::error::Error>> {
+    pub fn signature(&self) -> Result<Signature, ProtoError> {
         let bytes: [u8; 64] = hex::decode(&self.signature)?
             .try_into()
-            .map_err(|_| "Invalid signature")?;
-
-        let signature = Signature::from_bytes(&bytes);
-        Ok(signature)
+            .map_err(|_| ProtoError::InvalidSignatureLength)?;
+        Ok(Signature::from_bytes(&bytes))
     }
 }
 
