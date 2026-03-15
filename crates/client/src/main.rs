@@ -29,8 +29,10 @@ fn main() -> anyhow::Result<()> {
         tracing_subscriber::fmt().with_max_level(level).init();
     }
 
-    if let Command::Pubkey = args.command {
-        identity::print_pubkey(args.identity_path)?
+    match args.command {
+        Command::Keygen { force } => identity::generate(args.identity_path, force)?,
+        Command::Pubkey => identity::print_pubkey(args.identity_path)?,
+        _ => {}
     }
 
     std::process::exit(0);

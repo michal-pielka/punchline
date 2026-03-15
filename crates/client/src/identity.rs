@@ -1,4 +1,5 @@
 use ed25519_dalek::SigningKey;
+use punchline_proto::crypto;
 use std::path::PathBuf;
 
 fn default_key_path() -> anyhow::Result<PathBuf> {
@@ -28,6 +29,33 @@ pub fn write_identity(identity: &SigningKey, path: Option<PathBuf>) -> anyhow::R
     };
 
     std::fs::write(key_path, identity.as_bytes())?;
+    Ok(())
+}
+
+pub fn generate(path: Option<PathBuf>, force: bool) -> anyhow::Result<()> {
+    let key_path = match &path {
+        Some(p) => p.clone(),
+        None => default_key_path()?,
+    };
+
+    if key_path.exists() && !force {
+        anyhow::bail!(
+            "Key already exists at {}. Use --force to overwrite.",
+            key_path.display()
+        );
+    }
+
+    if let Some(parent) = key_path.parent() {
+        std::fs::create_dir_all(parent)?;
+    }
+
+    let key = crypto::generate_identity();
+    write_identity(&key, Some(key_path.clone()))?;
+
+    let public_key = key.verifying_key();
+    eprintln!("Keypair generated at {}", key_path.display());
+    eprintln!("Public key: {}", hex::encode(public_key.to_bytes()));
+
     Ok(())
 }
 
