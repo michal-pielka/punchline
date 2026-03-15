@@ -16,7 +16,7 @@ fn send_loop(
     cipher: ChaCha20Poly1305,
     transport: UdpTransport,
     peer_addr: SocketAddr,
-) -> Result<(), Box<dyn std::error::Error>> {
+) -> anyhow::Result<()> {
     let mut counter: u64 = 0;
     let stdin = io::stdin();
     let mut line = String::new();
@@ -37,7 +37,9 @@ fn send_loop(
         nonce_bytes[4..].copy_from_slice(&counter.to_be_bytes());
         let nonce = Nonce::from_slice(&nonce_bytes);
 
-        let message_encrypted = cipher.encrypt(nonce, message_plain.as_ref()).unwrap(); // TODO: error
+        let message_encrypted = cipher
+            .encrypt(nonce, message_plain.as_ref())
+            .map_err(|e| anyhow::anyhow!("Encryption failed: {e}"))?;
 
         let mut packet = Vec::new();
         packet.extend_from_slice(nonce);
@@ -54,7 +56,7 @@ fn recv_loop(
     cipher: ChaCha20Poly1305,
     transport: &UdpTransport,
     peer_addr: SocketAddr,
-) -> Result<(), Box<dyn std::error::Error>> {
+) -> anyhow::Result<()> {
     let mut counter: u64 = 0;
     let mut buf = [0u8; 1024];
 
@@ -78,7 +80,13 @@ fn recv_loop(
         }
 
         let message_encrypted = &buf[12..len];
-        let message_plain = cipher.decrypt(nonce, message_encrypted).unwrap(); // TODO: error
+        let message_plain = match cipher.decrypt(nonce, message_encrypted) {
+            Ok(plain) => plain,
+            Err(_) => {
+                debug!("Decryption failed, skipping packet");
+                continue;
+            }
+        };
 
         if message_plain.is_empty() || message_plain[0] != MSG_PREFIX {
             continue;
@@ -96,7 +104,7 @@ pub fn start(
     transport: &UdpTransport,
     peer_addr: SocketAddr,
     is_initiator: bool,
-) -> Result<(), Box<dyn std::error::Error>> {
+) -> anyhow::Result<()> {
     let send_transport = transport.try_clone()?;
 
     let key_bytes = shared_secret.as_bytes();
@@ -105,15 +113,19 @@ pub fn start(
     let mut send_key_bytes = [0u8; 32];
     let mut recv_key_bytes = [0u8; 32];
 
-    hkdf.expand(&[1, 3, 3, 7], &mut send_key_bytes).unwrap();
-    hkdf.expand(&[6, 9], &mut recv_key_bytes).unwrap();
+    hkdf.expand(&[1, 3, 3, 7], &mut send_key_bytes)
+        .map_err(|e| anyhow::anyhow!("HKDF expand failed: {e}"))?;
+    hkdf.expand(&[6, 9], &mut recv_key_bytes)
+        .map_err(|e| anyhow::anyhow!("HKDF expand failed: {e}"))?;
 
     if !is_initiator {
         std::mem::swap(&mut send_key_bytes, &mut recv_key_bytes);
     }
 
-    let recv_cipher = ChaCha20Poly1305::new_from_slice(&recv_key_bytes)?;
-    let send_cipher = ChaCha20Poly1305::new_from_slice(&send_key_bytes)?;
+    let send_cipher = ChaCha20Poly1305::new_from_slice(&send_key_bytes)
+        .map_err(|e| anyhow::anyhow!("Invalid send key: {e}"))?;
+    let recv_cipher = ChaCha20Poly1305::new_from_slice(&recv_key_bytes)
+        .map_err(|e| anyhow::anyhow!("Invalid recv key: {e}"))?;
 
     thread::spawn(move || {
         if let Err(e) = send_loop(send_cipher, send_transport, peer_addr) {

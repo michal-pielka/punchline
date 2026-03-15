@@ -39,10 +39,7 @@ fn is_ack(buf: &[u8]) -> bool {
 ///   3. Upon receiving an ACK, send ACK back (so peer also finishes) and exit.
 ///
 /// Both sides exit once they have sent AND received an ACK.
-pub fn establish(
-    transport: &UdpTransport,
-    peer_addr: SocketAddr,
-) -> Result<(), Box<dyn std::error::Error>> {
+pub fn establish(transport: &UdpTransport, peer_addr: SocketAddr) -> anyhow::Result<()> {
     let send_transport = transport.try_clone()?;
     let done = Arc::new(AtomicBool::new(false));
     let send_done = done.clone();
@@ -97,7 +94,9 @@ pub fn establish(
         }
     }
 
-    sender.join().map_err(|_| "Sender thread panicked")?;
+    sender
+        .join()
+        .map_err(|_| anyhow::anyhow!("Sender thread panicked"))?;
 
     Ok(())
 }

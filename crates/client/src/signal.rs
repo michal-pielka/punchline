@@ -14,7 +14,7 @@ pub fn pair_with_peer(
     public_key: &VerifyingKey,
     peer_public_key: &VerifyingKey,
     signal_addr: SocketAddr,
-) -> Result<PairResponse, Box<dyn std::error::Error>> {
+) -> anyhow::Result<PairResponse> {
     debug!(%signal_addr, "Connecting to signal server");
     let (mut sock, _response) = tungstenite::connect(format!("ws://{}", signal_addr))?;
 
