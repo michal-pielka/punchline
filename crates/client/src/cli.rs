@@ -46,6 +46,9 @@ pub enum Command {
         action: Option<PeersAction>,
     },
 
+    /// Show identity, config, and server reachability
+    Status,
+
     /// Generate shell completions
     Completions {
         /// Shell to generate completions for

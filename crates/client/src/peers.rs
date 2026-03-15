@@ -19,7 +19,7 @@ fn default_peers_path() -> anyhow::Result<PathBuf> {
         .join("known_peers.toml"))
 }
 
-fn load() -> anyhow::Result<Peers> {
+pub fn load() -> anyhow::Result<Peers> {
     let path = default_peers_path()?;
     match std::fs::read_to_string(&path) {
         Ok(content) => Ok(toml::from_str(&content)?),

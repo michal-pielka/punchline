@@ -30,6 +30,7 @@ fn main() -> anyhow::Result<()> {
         Command::Pubkey => identity::print_pubkey(args.identity_path),
         Command::Config { action } => config::handle(action),
         Command::Peers { action } => peers::handle(action),
+        Command::Status => status(args.identity_path),
         Command::Completions { shell } => {
             clap_complete::generate(
                 shell,
@@ -45,6 +46,65 @@ fn main() -> anyhow::Result<()> {
             signal,
         } => connect(args.identity_path, &peer_key, stun, signal),
     }
+}
+
+fn status(identity_path: Option<PathBuf>) -> anyhow::Result<()> {
+    let cfg = config::load_config().unwrap_or(Config {
+        stun_server: None,
+        signal_server: None,
+    });
+
+    // Identity
+    match identity::load_identity(identity_path) {
+        Ok(key) => {
+            let hex = hex::encode(key.verifying_key().to_bytes());
+            println!("Identity:       {}", &hex);
+        }
+        Err(_) => println!("Identity:       not found"),
+    }
+
+    // Config
+    match config::default_config_path() {
+        Ok(path) if path.exists() => println!("Config:         {}", path.display()),
+        Ok(_) => println!("Config:         not found"),
+        Err(_) => println!("Config:         not found"),
+    }
+
+    // STUN server
+    match cfg.stun_server {
+        Some(addr) => {
+            let reachable = stun::get_external_addr(addr).is_ok();
+            let tag = if reachable {
+                "reachable"
+            } else {
+                "unreachable"
+            };
+            println!("STUN server:    {addr} [{tag}]");
+        }
+        None => println!("STUN server:    not configured"),
+    }
+
+    // Signal server
+    match cfg.signal_server {
+        Some(addr) => {
+            let reachable =
+                std::net::TcpStream::connect_timeout(&addr, std::time::Duration::from_secs(3))
+                    .is_ok();
+            let tag = if reachable {
+                "reachable"
+            } else {
+                "unreachable"
+            };
+            println!("Signal server:  {addr} [{tag}]");
+        }
+        None => println!("Signal server:  not configured"),
+    }
+
+    // Known peers
+    let count = peers::load().map(|p| p.peers.len()).unwrap_or(0);
+    println!("Known peers:    {count}");
+
+    Ok(())
 }
 
 fn connect(
