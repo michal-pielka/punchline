@@ -40,10 +40,10 @@ pub enum Command {
 
         /// STUN server address
         #[arg(short, long)]
-        stun: String,
+        stun: Option<String>,
 
         /// Signal server address
         #[arg(short = 'g', long)]
-        signal: String,
+        signal: Option<String>,
     },
 }

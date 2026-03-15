@@ -4,7 +4,8 @@ use anyhow::Context;
 use clap::Parser;
 use ed25519_dalek::VerifyingKey;
 use punchline_client::cli::{Args, Command};
-use punchline_client::{handshake, identity, message, punch, signal, stun};
+use punchline_client::config::Config;
+use punchline_client::{config, handshake, identity, message, punch, signal, stun};
 use tracing::info;
 
 fn main() -> anyhow::Result<()> {
@@ -29,21 +30,36 @@ fn main() -> anyhow::Result<()> {
         Command::Pubkey => identity::print_pubkey(args.identity_path),
         Command::Connect {
             peer_key,
-            stun: stun_addr,
-            signal: signal_addr,
-        } => connect(args.identity_path, &peer_key, &stun_addr, &signal_addr),
+            stun,
+            signal,
+        } => connect(args.identity_path, &peer_key, stun, signal),
     }
 }
 
 fn connect(
     identity_path: Option<PathBuf>,
     peer_key: &str,
-    stun_addr: &str,
-    signal_addr: &str,
+    stun_addr: Option<String>,
+    signal_addr: Option<String>,
 ) -> anyhow::Result<()> {
-    let stun_addr: std::net::SocketAddr = stun_addr.parse().context("Invalid STUN address")?;
-    let signal_addr: std::net::SocketAddr =
-        signal_addr.parse().context("Invalid signal address")?;
+    let cfg = config::load_config().unwrap_or(Config {
+        stun_address: None,
+        signal_address: None,
+    });
+
+    let stun_addr = match stun_addr {
+        Some(s) => s.parse().context("Invalid --stun address")?,
+        None => cfg.stun_address.ok_or_else(|| {
+            anyhow::anyhow!("No STUN address. Use --stun or set stun_address in config.toml")
+        })?,
+    };
+
+    let signal_addr = match signal_addr {
+        Some(s) => s.parse().context("Invalid --signal address")?,
+        None => cfg.signal_address.ok_or_else(|| {
+            anyhow::anyhow!("No signal address. Use --signal or set signal_address in config.toml")
+        })?,
+    };
 
     let identity = identity::load_identity(identity_path)
         .context("No identity found. Run 'punchline keygen' first.")?;
