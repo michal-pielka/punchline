@@ -28,6 +28,7 @@ fn main() -> anyhow::Result<()> {
     match args.command {
         Command::Keygen { force } => identity::generate(args.identity_path, force),
         Command::Pubkey => identity::print_pubkey(args.identity_path),
+        Command::Config { action } => config::handle(action),
         Command::Connect {
             peer_key,
             stun,
@@ -43,21 +44,21 @@ fn connect(
     signal_addr: Option<String>,
 ) -> anyhow::Result<()> {
     let cfg = config::load_config().unwrap_or(Config {
-        stun_address: None,
-        signal_address: None,
+        stun_server: None,
+        signal_server: None,
     });
 
     let stun_addr = match stun_addr {
         Some(s) => s.parse().context("Invalid --stun address")?,
-        None => cfg.stun_address.ok_or_else(|| {
-            anyhow::anyhow!("No STUN address. Use --stun or set stun_address in config.toml")
+        None => cfg.stun_server.ok_or_else(|| {
+            anyhow::anyhow!("No STUN address. Use --stun or set 'stun_server' in config.toml")
         })?,
     };
 
     let signal_addr = match signal_addr {
         Some(s) => s.parse().context("Invalid --signal address")?,
-        None => cfg.signal_address.ok_or_else(|| {
-            anyhow::anyhow!("No signal address. Use --signal or set signal_address in config.toml")
+        None => cfg.signal_server.ok_or_else(|| {
+            anyhow::anyhow!("No signal address. Use --signal or set 'signal_server' in config.toml")
         })?,
     };
 
