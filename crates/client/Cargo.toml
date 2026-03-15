@@ -13,6 +13,7 @@ hex = "0.4.3"
 hkdf = "0.12.4"
 punchline-proto = { path = "../proto" }
 rand_core = { version = "0.6", features = ["getrandom"] }
+serde = { version = "1.0.228", features = ["derive"] }
 serde_json = "1.0.149"
 sha2 = "0.10.9"
 toml = "1.0.6"
