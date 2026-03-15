@@ -432,6 +432,7 @@ dependencies = [
  "hex",
  "rand_core 0.6.4",
  "serde",
+ "thiserror",
  "x25519-dalek",
 ]
 
