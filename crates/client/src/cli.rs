@@ -33,6 +33,12 @@ pub enum Command {
     /// Print your public key
     Pubkey,
 
+    /// Manage configuration
+    Config {
+        #[command(subcommand)]
+        action: ConfigAction,
+    },
+
     /// Connect to a peer
     Connect {
         /// Peer's public key (64 hex chars)
@@ -46,4 +52,13 @@ pub enum Command {
         #[arg(short = 'g', long)]
         signal: Option<String>,
     },
+}
+
+#[derive(Subcommand)]
+pub enum ConfigAction {
+    /// Print the config file path
+    Path,
+
+    /// Show current config values
+    Show,
 }
