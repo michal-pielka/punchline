@@ -2,11 +2,10 @@ use std::io;
 use std::net::SocketAddr;
 use std::thread;
 
-use chacha20poly1305::{AeadCore, ChaCha20Poly1305, KeyInit, Nonce, aead::Aead};
+use chacha20poly1305::{ChaCha20Poly1305, KeyInit, Nonce, aead::Aead};
 use hkdf::Hkdf;
 use punchline_proto::transport::Transport;
 use punchline_proto::udp::UdpTransport;
-use rand_core::OsRng;
 use sha2::Sha256;
 use tracing::{debug, error, info};
 use x25519_dalek::SharedSecret;
@@ -18,6 +17,7 @@ fn send_loop(
     transport: UdpTransport,
     peer_addr: SocketAddr,
 ) -> Result<(), Box<dyn std::error::Error>> {
+    let mut counter: u64 = 0;
     let stdin = io::stdin();
     let mut line = String::new();
 
@@ -33,15 +33,20 @@ fn send_loop(
         let mut message_plain = vec![MSG_PREFIX];
         message_plain.extend_from_slice(trimmed.as_bytes());
 
-        let nonce = ChaCha20Poly1305::generate_nonce(OsRng);
-        let message_encrypted = cipher.encrypt(&nonce, message_plain.as_ref()).unwrap(); // TODO: error
+        let mut nonce_bytes = [0u8; 12];
+        nonce_bytes[4..].copy_from_slice(&counter.to_be_bytes());
+        let nonce = Nonce::from_slice(&nonce_bytes);
+
+        let message_encrypted = cipher.encrypt(nonce, message_plain.as_ref()).unwrap(); // TODO: error
 
         let mut packet = Vec::new();
-        packet.extend_from_slice(&nonce);
+        packet.extend_from_slice(nonce);
         packet.extend_from_slice(&message_encrypted);
 
         transport.send_to(&packet, peer_addr)?;
         debug!("Sent: {trimmed}");
+
+        counter += 1;
     }
 }
 
@@ -50,6 +55,7 @@ fn recv_loop(
     transport: &UdpTransport,
     peer_addr: SocketAddr,
 ) -> Result<(), Box<dyn std::error::Error>> {
+    let mut counter: u64 = 0;
     let mut buf = [0u8; 1024];
 
     loop {
@@ -64,6 +70,13 @@ fn recv_loop(
         }
 
         let nonce = Nonce::from_slice(&buf[..12]);
+        let received_counter = u64::from_be_bytes(buf[4..12].try_into()?);
+
+        if received_counter <= counter {
+            debug!("Rejected replay: counter {received_counter} <= {counter}");
+            continue;
+        }
+
         let message_encrypted = &buf[12..len];
         let message_plain = cipher.decrypt(nonce, message_encrypted).unwrap(); // TODO: error
 
@@ -73,6 +86,8 @@ fn recv_loop(
 
         let message = String::from_utf8_lossy(&message_plain[1..]);
         info!("{message}");
+
+        counter = received_counter;
     }
 }
 
