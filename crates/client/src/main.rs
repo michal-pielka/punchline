@@ -23,6 +23,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         }
     };
     let public_key = identity.verifying_key();
+    println!("Public key: {}", hex::encode(public_key.to_bytes()));
 
     let peer_public_key_string = std::env::var("PEER_PUB_KEY")?;
     let peer_public_key_bytes: [u8; 32] = hex::decode(peer_public_key_string)?
@@ -48,7 +49,8 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     let shared_secret = handshake::exchange_keys(&identity, &peer_public_key, &sock, peer_addr)?;
 
-    message::start(&shared_secret, &sock, peer_addr)?;
+    let is_initiator = public_key.as_bytes() < peer_public_key.as_bytes();
+    message::start(&shared_secret, &sock, peer_addr, is_initiator)?;
 
     Ok(())
 }

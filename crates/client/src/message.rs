@@ -3,9 +3,11 @@ use std::net::SocketAddr;
 use std::thread;
 
 use chacha20poly1305::{AeadCore, ChaCha20Poly1305, KeyInit, Nonce, aead::Aead};
+use hkdf::Hkdf;
 use punchline_proto::transport::Transport;
 use punchline_proto::udp::UdpTransport;
 use rand_core::OsRng;
+use sha2::Sha256;
 use tracing::{debug, error, info};
 use x25519_dalek::SharedSecret;
 
@@ -78,13 +80,25 @@ pub fn start(
     shared_secret: &SharedSecret,
     transport: &UdpTransport,
     peer_addr: SocketAddr,
+    is_initiator: bool,
 ) -> Result<(), Box<dyn std::error::Error>> {
     let send_transport = transport.try_clone()?;
 
     let key_bytes = shared_secret.as_bytes();
-    let key = chacha20poly1305::Key::from_slice(key_bytes);
-    let send_cipher = ChaCha20Poly1305::new(key);
-    let recv_cipher = send_cipher.clone();
+    let hkdf = Hkdf::<Sha256>::new(None, key_bytes);
+
+    let mut send_key_bytes = [0u8; 32];
+    let mut recv_key_bytes = [0u8; 32];
+
+    hkdf.expand(&[1, 3, 3, 7], &mut send_key_bytes).unwrap();
+    hkdf.expand(&[6, 9], &mut recv_key_bytes).unwrap();
+
+    if !is_initiator {
+        std::mem::swap(&mut send_key_bytes, &mut recv_key_bytes);
+    }
+
+    let recv_cipher = ChaCha20Poly1305::new_from_slice(&recv_key_bytes)?;
+    let send_cipher = ChaCha20Poly1305::new_from_slice(&send_key_bytes)?;
 
     thread::spawn(move || {
         if let Err(e) = send_loop(send_cipher, send_transport, peer_addr) {
