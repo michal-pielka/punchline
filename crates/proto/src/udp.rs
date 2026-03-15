@@ -10,12 +10,6 @@ impl UdpTransport {
     pub fn new(socket: UdpSocket) -> Self {
         Self { socket }
     }
-
-    pub fn try_clone(&self) -> std::io::Result<Self> {
-        Ok(Self {
-            socket: self.socket.try_clone()?,
-        })
-    }
 }
 
 impl Transport for UdpTransport {
@@ -29,5 +23,11 @@ impl Transport for UdpTransport {
 
     fn local_addr(&self) -> Result<SocketAddr, std::io::Error> {
         self.socket.local_addr()
+    }
+
+    fn try_clone(&self) -> Result<Box<dyn Transport>, std::io::Error> {
+        Ok(Box::new(Self {
+            socket: self.socket.try_clone()?,
+        }))
     }
 }

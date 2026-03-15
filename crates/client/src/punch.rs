@@ -5,7 +5,6 @@ use std::thread;
 use std::time::{Duration, Instant};
 
 use punchline_proto::transport::Transport;
-use punchline_proto::udp::UdpTransport;
 use tracing::{debug, info};
 
 const PUNCH_PROBE: &[u8] = &[0x00];
@@ -13,12 +12,12 @@ const PUNCH_ACK: &[u8] = &[0x01];
 const PUNCH_INTERVAL_MS: u64 = 200;
 const ACK_TIMEOUT: Duration = Duration::from_secs(2);
 
-fn send_probe(transport: &UdpTransport, peer_addr: SocketAddr) -> Result<(), std::io::Error> {
+fn send_probe(transport: &dyn Transport, peer_addr: SocketAddr) -> Result<(), std::io::Error> {
     transport.send_to(PUNCH_PROBE, peer_addr)?;
     Ok(())
 }
 
-fn send_ack(transport: &UdpTransport, peer_addr: SocketAddr) -> Result<(), std::io::Error> {
+fn send_ack(transport: &dyn Transport, peer_addr: SocketAddr) -> Result<(), std::io::Error> {
     transport.send_to(PUNCH_ACK, peer_addr)?;
     Ok(())
 }
@@ -39,7 +38,7 @@ fn is_ack(buf: &[u8]) -> bool {
 ///   3. Upon receiving an ACK, send ACK back (so peer also finishes) and exit.
 ///
 /// Both sides exit once they have sent AND received an ACK.
-pub fn establish(transport: &UdpTransport, peer_addr: SocketAddr) -> anyhow::Result<()> {
+pub fn establish(transport: &dyn Transport, peer_addr: SocketAddr) -> anyhow::Result<()> {
     let send_transport = transport.try_clone()?;
     let done = Arc::new(AtomicBool::new(false));
     let send_done = done.clone();
@@ -58,10 +57,10 @@ pub fn establish(transport: &UdpTransport, peer_addr: SocketAddr) -> anyhow::Res
                     debug!("ACK timeout, assuming peer finished");
                     break;
                 }
-                if let Err(e) = send_ack(&send_transport, peer_addr) {
+                if let Err(e) = send_ack(send_transport.as_ref(), peer_addr) {
                     debug!(%e, "ACK send failed");
                 }
-            } else if let Err(e) = send_probe(&send_transport, peer_addr) {
+            } else if let Err(e) = send_probe(send_transport.as_ref(), peer_addr) {
                 debug!(%e, "Probe send failed");
             }
 
@@ -82,11 +81,8 @@ pub fn establish(transport: &UdpTransport, peer_addr: SocketAddr) -> anyhow::Res
         if is_probe(data) {
             debug!("Received probe, switching to ACK mode");
             got_probe.store(true, Ordering::Relaxed);
-            // Also send an ACK immediately, don't wait for sender loop
             send_ack(transport, peer_addr)?;
         } else if is_ack(data) {
-            // Peer got our probe/ACK and confirmed.
-            // Send ACK back so peer can also finish.
             send_ack(transport, peer_addr)?;
             info!("Hole punched!");
             done.store(true, Ordering::Relaxed);

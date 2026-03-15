@@ -5,7 +5,6 @@ use std::thread;
 use chacha20poly1305::{ChaCha20Poly1305, KeyInit, Nonce, aead::Aead};
 use hkdf::Hkdf;
 use punchline_proto::transport::Transport;
-use punchline_proto::udp::UdpTransport;
 use sha2::Sha256;
 use tracing::{debug, error, info};
 use x25519_dalek::SharedSecret;
@@ -14,7 +13,7 @@ const MSG_PREFIX: u8 = 0x02;
 
 fn send_loop(
     cipher: ChaCha20Poly1305,
-    transport: UdpTransport,
+    transport: Box<dyn Transport>,
     peer_addr: SocketAddr,
 ) -> anyhow::Result<()> {
     let mut counter: u64 = 0;
@@ -54,7 +53,7 @@ fn send_loop(
 
 fn recv_loop(
     cipher: ChaCha20Poly1305,
-    transport: &UdpTransport,
+    transport: &dyn Transport,
     peer_addr: SocketAddr,
 ) -> anyhow::Result<()> {
     let mut counter: u64 = 0;
@@ -101,7 +100,7 @@ fn recv_loop(
 
 pub fn start(
     shared_secret: &SharedSecret,
-    transport: &UdpTransport,
+    transport: &dyn Transport,
     peer_addr: SocketAddr,
     is_initiator: bool,
 ) -> anyhow::Result<()> {

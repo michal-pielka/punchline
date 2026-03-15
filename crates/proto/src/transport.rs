@@ -1,7 +1,8 @@
 use std::net::SocketAddr;
 
-pub trait Transport {
+pub trait Transport: Send {
     fn send_to(&self, buf: &[u8], addr: SocketAddr) -> Result<usize, std::io::Error>;
     fn recv_from(&self, buf: &mut [u8]) -> Result<(usize, SocketAddr), std::io::Error>;
     fn local_addr(&self) -> Result<SocketAddr, std::io::Error>;
+    fn try_clone(&self) -> Result<Box<dyn Transport>, std::io::Error>;
 }
