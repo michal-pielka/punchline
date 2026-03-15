@@ -30,3 +30,12 @@ pub fn write_identity(identity: &SigningKey, path: Option<PathBuf>) -> anyhow::R
     std::fs::write(key_path, identity.as_bytes())?;
     Ok(())
 }
+
+pub fn print_pubkey(path: Option<PathBuf>) -> anyhow::Result<()> {
+    let identity = load_identity(path)?;
+    let public_key = identity.verifying_key();
+
+    println!("{}", hex::encode(public_key.to_bytes()));
+
+    Ok(())
+}

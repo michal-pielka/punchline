@@ -2,6 +2,7 @@ use anyhow::Context;
 use clap::Parser;
 use ed25519_dalek::VerifyingKey;
 use punchline_client::cli::Args;
+use punchline_client::cli::Command;
 use punchline_client::handshake;
 use punchline_client::identity;
 use punchline_client::message;
@@ -27,6 +28,13 @@ fn main() -> anyhow::Result<()> {
     if let Some(level) = log_level {
         tracing_subscriber::fmt().with_max_level(level).init();
     }
+
+    match args.command {
+        Command::Pubkey => identity::print_pubkey(args.identity_path)?,
+        _ => {}
+    }
+
+    std::process::exit(0);
 
     let stun_addr: std::net::SocketAddr = std::env::var("STUN_ADDRESS")
         .context("STUN_ADDRESS not set")?
