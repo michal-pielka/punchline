@@ -28,7 +28,20 @@ pub fn write_identity(identity: &SigningKey, path: Option<PathBuf>) -> anyhow::R
         None => default_key_path()?,
     };
 
-    std::fs::write(key_path, identity.as_bytes())?;
+    std::fs::write(&key_path, identity.as_bytes())?;
+    set_owner_only_permissions(&key_path)?;
+    Ok(())
+}
+
+#[cfg(unix)]
+fn set_owner_only_permissions(path: &PathBuf) -> anyhow::Result<()> {
+    use std::os::unix::fs::PermissionsExt;
+    std::fs::set_permissions(path, std::fs::Permissions::from_mode(0o600))?;
+    Ok(())
+}
+
+#[cfg(not(unix))]
+fn set_owner_only_permissions(_path: &PathBuf) -> anyhow::Result<()> {
     Ok(())
 }
 
