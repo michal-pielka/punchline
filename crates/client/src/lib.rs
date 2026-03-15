@@ -1,4 +1,5 @@
 pub mod cli;
+pub mod config;
 pub mod handshake;
 pub mod identity;
 pub mod message;
