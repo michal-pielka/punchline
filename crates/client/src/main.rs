@@ -1,15 +1,10 @@
+use std::path::PathBuf;
+
 use anyhow::Context;
 use clap::Parser;
 use ed25519_dalek::VerifyingKey;
-use punchline_client::cli::Args;
-use punchline_client::cli::Command;
-use punchline_client::handshake;
-use punchline_client::identity;
-use punchline_client::message;
-use punchline_client::punch;
-use punchline_client::signal;
-use punchline_client::stun;
-use punchline_proto::crypto;
+use punchline_client::cli::{Args, Command};
+use punchline_client::{handshake, identity, message, punch, signal, stun};
 use tracing::info;
 
 fn main() -> anyhow::Result<()> {
@@ -30,40 +25,37 @@ fn main() -> anyhow::Result<()> {
     }
 
     match args.command {
-        Command::Keygen { force } => identity::generate(args.identity_path, force)?,
-        Command::Pubkey => identity::print_pubkey(args.identity_path)?,
-        _ => {}
+        Command::Keygen { force } => identity::generate(args.identity_path, force),
+        Command::Pubkey => identity::print_pubkey(args.identity_path),
+        Command::Connect {
+            peer_key,
+            stun: stun_addr,
+            signal: signal_addr,
+        } => connect(args.identity_path, &peer_key, &stun_addr, &signal_addr),
     }
+}
 
-    std::process::exit(0);
+fn connect(
+    identity_path: Option<PathBuf>,
+    peer_key: &str,
+    stun_addr: &str,
+    signal_addr: &str,
+) -> anyhow::Result<()> {
+    let stun_addr: std::net::SocketAddr = stun_addr.parse().context("Invalid STUN address")?;
+    let signal_addr: std::net::SocketAddr =
+        signal_addr.parse().context("Invalid signal address")?;
 
-    let stun_addr: std::net::SocketAddr = std::env::var("STUN_ADDRESS")
-        .context("STUN_ADDRESS not set")?
-        .parse()
-        .context("Invalid STUN_ADDRESS")?;
-    let signal_addr: std::net::SocketAddr = std::env::var("SIGNAL_ADDRESS")
-        .context("SIGNAL_ADDRESS not set")?
-        .parse()
-        .context("Invalid SIGNAL_ADDRESS")?;
-
-    let identity = match identity::load_identity(None) {
-        Ok(key) => key,
-        Err(_) => {
-            let key = crypto::generate_identity();
-            identity::write_identity(&key, None).context("Failed to write identity key")?;
-            key
-        }
-    };
+    let identity = identity::load_identity(identity_path)
+        .context("No identity found. Run 'punchline keygen' first.")?;
     let public_key = identity.verifying_key();
     info!(public_key = %hex::encode(public_key.to_bytes()), "Identity loaded");
 
-    let peer_public_key_string = std::env::var("PEER_PUB_KEY").context("PEER_PUB_KEY not set")?;
-    let peer_public_key_bytes: [u8; 32] = hex::decode(&peer_public_key_string)
-        .context("PEER_PUB_KEY is not valid hex")?
+    let peer_public_key_bytes: [u8; 32] = hex::decode(peer_key)
+        .context("Peer key is not valid hex")?
         .try_into()
-        .map_err(|_| anyhow::anyhow!("PEER_PUB_KEY must be 32 bytes (64 hex chars)"))?;
+        .map_err(|_| anyhow::anyhow!("Peer key must be 32 bytes (64 hex chars)"))?;
     let peer_public_key = VerifyingKey::from_bytes(&peer_public_key_bytes)
-        .context("PEER_PUB_KEY is not a valid Ed25519 public key")?;
+        .context("Peer key is not a valid Ed25519 public key")?;
 
     let (external_addr, sock) =
         stun::get_external_addr(stun_addr).context("STUN discovery failed")?;
