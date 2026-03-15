@@ -3,6 +3,7 @@ pub mod config;
 pub mod handshake;
 pub mod identity;
 pub mod message;
+pub mod peers;
 pub mod punch;
 pub mod signal;
 pub mod stun;
