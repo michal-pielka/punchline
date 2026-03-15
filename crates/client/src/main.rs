@@ -137,7 +137,8 @@ fn connect(
     let public_key = identity.verifying_key();
     info!(public_key = %hex::encode(public_key.to_bytes()), "Identity loaded");
 
-    let peer_public_key_bytes: [u8; 32] = hex::decode(peer_key)
+    let peer_key = peers::resolve_peer_key(peer_key)?;
+    let peer_public_key_bytes: [u8; 32] = hex::decode(&peer_key)
         .context("Peer key is not valid hex")?
         .try_into()
         .map_err(|_| anyhow::anyhow!("Peer key must be 32 bytes (64 hex chars)"))?;
