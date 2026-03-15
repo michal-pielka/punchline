@@ -5,7 +5,6 @@ use std::thread;
 
 use anyhow::Context;
 use clap::Parser;
-use punchline_proto::crypto::verify_handshake;
 use punchline_proto::signal::{PairRequest, PairResponse};
 use punchline_signald::cli::Args;
 use tracing::{debug, error, info};
@@ -33,25 +32,10 @@ fn handle_connection(
         .and_then(|p| serde_json::from_str::<PairRequest>(p).ok())
         .ok_or_else(|| anyhow::anyhow!("Invalid pair request"))?;
 
-    // Verify the signature
-    debug!(from = %pair_request.public_key, "Verifying signature");
-    let verifying_key = pair_request.verifying_key().context("Invalid public key")?;
-    let target_verifying_key = pair_request
-        .target_verifying_key()
-        .context("Invalid target public key")?;
-    let signature = pair_request.signature().context("Invalid signature")?;
-    verify_handshake(
-        pair_request.external_addr,
-        &verifying_key,
-        &target_verifying_key,
-        &signature,
-    )
-    .context("Signature verification failed")?;
-
     info!(
         from = %pair_request.public_key,
         to = %pair_request.target_public_key,
-        "Signature verified, pair request accepted"
+        "Pair request accepted"
     );
 
     // Check for mutual match: target is waiting AND wants to talk to us
