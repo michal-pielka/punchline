@@ -4,48 +4,65 @@ use anyhow::Context;
 use clap::{CommandFactory, Parser};
 use punchline_client::cli::{Args, Command};
 use punchline_client::config::Config;
+use punchline_client::tui;
 use punchline_client::{config, handshake, identity, message, peers, punch, signal, stun};
 use tracing::info;
 
 fn main() -> anyhow::Result<()> {
-    let args = Args::parse();
+    let app_state = tui::AppState {};
 
-    let log_level = if args.quiet {
-        None
-    } else {
-        match args.verbose {
-            0 => Some(tracing::Level::INFO),
-            1 => Some(tracing::Level::DEBUG),
-            _ => Some(tracing::Level::TRACE),
-        }
+    let app = tui::App {
+        should_quit: false,
+        state: app_state,
     };
 
-    if let Some(level) = log_level {
-        tracing_subscriber::fmt().with_max_level(level).init();
-    }
+    let terminal = ratatui::init();
+    let app_result = app.run(terminal);
 
-    match args.command {
-        Command::Keygen { force } => identity::generate(args.identity_path, force),
-        Command::Pubkey => identity::print_pubkey(args.identity_path),
-        Command::Config { action } => config::handle(action),
-        Command::Peers { action } => peers::handle(action),
-        Command::Status => status(args.identity_path),
-        Command::Completions { shell } => {
-            clap_complete::generate(
-                shell,
-                &mut Args::command(),
-                "punchline",
-                &mut std::io::stdout(),
-            );
-            Ok(())
-        }
-        Command::Connect {
-            peer_key,
-            stun,
-            signal,
-        } => connect(args.identity_path, &peer_key, stun, signal),
-    }
+    ratatui::restore();
+
+    app_result
 }
+
+// fn main() -> anyhow::Result<()> {
+//     let args = Args::parse();
+//
+//     let log_level = if args.quiet {
+//         None
+//     } else {
+//         match args.verbose {
+//             0 => Some(tracing::Level::INFO),
+//             1 => Some(tracing::Level::DEBUG),
+//             _ => Some(tracing::Level::TRACE),
+//         }
+//     };
+//
+//     if let Some(level) = log_level {
+//         tracing_subscriber::fmt().with_max_level(level).init();
+//     }
+//
+//     match args.command {
+//         Command::Keygen { force } => identity::generate(args.identity_path, force),
+//         Command::Pubkey => identity::print_pubkey(args.identity_path),
+//         Command::Config { action } => config::handle(action),
+//         Command::Peers { action } => peers::handle(action),
+//         Command::Status => status(args.identity_path),
+//         Command::Completions { shell } => {
+//             clap_complete::generate(
+//                 shell,
+//                 &mut Args::command(),
+//                 "punchline",
+//                 &mut std::io::stdout(),
+//             );
+//             Ok(())
+//         }
+//         Command::Connect {
+//             peer_key,
+//             stun,
+//             signal,
+//         } => connect(args.identity_path, &peer_key, stun, signal),
+//     }
+// }
 
 fn status(identity_path: Option<PathBuf>) -> anyhow::Result<()> {
     let cfg = config::load_config().unwrap_or(Config {
