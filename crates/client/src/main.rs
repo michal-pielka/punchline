@@ -1,7 +1,7 @@
 use std::path::PathBuf;
 
 use anyhow::Context;
-use clap::Parser;
+use clap::{CommandFactory, Parser};
 use ed25519_dalek::VerifyingKey;
 use punchline_client::cli::{Args, Command};
 use punchline_client::config::Config;
@@ -29,12 +29,21 @@ fn main() -> anyhow::Result<()> {
         Command::Keygen { force } => identity::generate(args.identity_path, force),
         Command::Pubkey => identity::print_pubkey(args.identity_path),
         Command::Config { action } => config::handle(action),
+        Command::Peers { action } => peers::handle(action),
+        Command::Completions { shell } => {
+            clap_complete::generate(
+                shell,
+                &mut Args::command(),
+                "punchline",
+                &mut std::io::stdout(),
+            );
+            Ok(())
+        }
         Command::Connect {
             peer_key,
             stun,
             signal,
         } => connect(args.identity_path, &peer_key, stun, signal),
-        Command::Peers { action } => peers::handle(action),
     }
 }
 

@@ -1,6 +1,7 @@
 use std::path::PathBuf;
 
 use clap::{Parser, Subcommand};
+use clap_complete::Shell;
 
 #[derive(Parser)]
 #[command(version, about = "Punchline P2P encrypted messaging")]
@@ -43,6 +44,12 @@ pub enum Command {
     Peers {
         #[command(subcommand)]
         action: Option<PeersAction>,
+    },
+
+    /// Generate shell completions
+    Completions {
+        /// Shell to generate completions for
+        shell: Shell,
     },
 
     /// Connect to a peer
