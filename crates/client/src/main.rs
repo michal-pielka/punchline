@@ -5,7 +5,7 @@ use clap::Parser;
 use ed25519_dalek::VerifyingKey;
 use punchline_client::cli::{Args, Command};
 use punchline_client::config::Config;
-use punchline_client::{config, handshake, identity, message, punch, signal, stun};
+use punchline_client::{config, handshake, identity, message, peers, punch, signal, stun};
 use tracing::info;
 
 fn main() -> anyhow::Result<()> {
@@ -34,6 +34,7 @@ fn main() -> anyhow::Result<()> {
             stun,
             signal,
         } => connect(args.identity_path, &peer_key, stun, signal),
+        Command::Peers { action } => peers::handle(action),
     }
 }
 

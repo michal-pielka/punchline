@@ -42,7 +42,7 @@ pub enum Command {
     /// Manage known peers
     Peers {
         #[command(subcommand)]
-        action: PeersAction,
+        action: Option<PeersAction>,
     },
 
     /// Connect to a peer
