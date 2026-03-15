@@ -39,11 +39,11 @@ pub enum Command {
         peer_key: String,
 
         /// STUN server address
-        #[arg(long)]
+        #[arg(short, long)]
         stun: String,
 
         /// Signal server address
-        #[arg(long)]
+        #[arg(short = 'g', long)]
         signal: String,
     },
 }
