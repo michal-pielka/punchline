@@ -7,9 +7,16 @@ const NOISE_PATTERN: &str = "Noise_IK_25519_ChaChaPoly_SHA256";
 const PUNCH_PROBE: u8 = 0x00;
 const PUNCH_ACK: u8 = 0x01;
 
-fn recv_handshake<T: Transport>(transport: &T, buf: &mut [u8]) -> anyhow::Result<usize> {
+fn recv_handshake<T: Transport>(
+    transport: &T,
+    peer_addr: SocketAddr,
+    buf: &mut [u8],
+) -> anyhow::Result<usize> {
     loop {
-        let (len, _addr) = transport.recv_from(buf)?;
+        let (len, addr) = transport.recv_from(buf)?;
+        if addr != peer_addr {
+            continue;
+        }
         // Skip leftover punch packets
         if len > 0 && (buf[0] == PUNCH_PROBE || buf[0] == PUNCH_ACK) {
             continue;
@@ -49,7 +56,7 @@ pub fn exchange_keys<T: Transport>(
         let _len = transport.send_to(&enc_send_buf[..len], peer_addr)?;
 
         // Receive
-        let len = recv_handshake(transport, &mut enc_recv_buf)?;
+        let len = recv_handshake(transport, peer_addr, &mut enc_recv_buf)?;
 
         // Decrypt
         handshake_state.read_message(&enc_recv_buf[..len], &mut dec_recv_buf)?;
@@ -60,7 +67,7 @@ pub fn exchange_keys<T: Transport>(
             .build_responder()?;
 
         // Receive
-        let len = recv_handshake(transport, &mut enc_recv_buf)?;
+        let len = recv_handshake(transport, peer_addr, &mut enc_recv_buf)?;
 
         // Decrypt
         handshake_state.read_message(&enc_recv_buf[..len], &mut dec_recv_buf)?;
