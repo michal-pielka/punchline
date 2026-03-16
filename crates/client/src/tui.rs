@@ -21,6 +21,7 @@ pub struct App {
     input: String,
     peer: PeerInfo,
     style: crate::style::Style,
+    peer_disconnected: bool,
     pub should_quit: bool,
 }
 
@@ -63,6 +64,7 @@ pub enum AppEvent {
     },
     MessageReceived(String),
     MessageSent(String),
+    PeerDisconnected,
     Error(String),
 }
 
@@ -101,6 +103,7 @@ impl App {
             input: String::new(),
             peer,
             style,
+            peer_disconnected: false,
             should_quit: false,
         }
     }
@@ -115,6 +118,12 @@ impl App {
             AppEvent::MessageSent(msg) => {
                 let chat_message = ChatMessage::new(msg, MessageSender::Me);
                 self.messages.push(chat_message);
+            }
+
+            AppEvent::PeerDisconnected => {
+                let msg = ChatMessage::new("peer disconnected.".to_string(), MessageSender::Peer);
+                self.messages.push(msg);
+                self.peer_disconnected = true;
             }
 
             AppEvent::Key(key) => self.handle_key(key, tx_out),
@@ -147,7 +156,7 @@ impl App {
         match key.code {
             KeyCode::Esc => self.should_quit = true,
             KeyCode::Enter => {
-                if self.input.is_empty() {
+                if self.input.is_empty() || self.peer_disconnected {
                     return;
                 }
 

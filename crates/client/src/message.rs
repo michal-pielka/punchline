@@ -12,6 +12,7 @@ use crate::tui::AppEvent;
 const MSG_PREFIX: u8 = 0x02;
 const KEEPALIVE_PREFIX: u8 = 0x03;
 const KEEPALIVE_INTERVAL: Duration = Duration::from_secs(10);
+const DISCONNECT_TIMEOUT: Duration = Duration::from_secs(30);
 
 fn send_encrypted(
     noise: &Arc<Mutex<TransportState>>,
@@ -56,12 +57,25 @@ fn recv_loop(
     tx: Sender<AppEvent>,
     peer_addr: SocketAddr,
 ) {
+    use std::time::Instant;
+
     let mut buf = [0u8; 1024];
     let mut plaintext = [0u8; 1024];
+    let mut last_received = Instant::now();
 
     loop {
         let (len, src_addr) = match transport.recv_from(&mut buf) {
             Ok(r) => r,
+            Err(e)
+                if e.kind() == std::io::ErrorKind::WouldBlock
+                    || e.kind() == std::io::ErrorKind::TimedOut =>
+            {
+                if last_received.elapsed() >= DISCONNECT_TIMEOUT {
+                    let _ = tx.send(AppEvent::PeerDisconnected);
+                    break;
+                }
+                continue;
+            }
             Err(_) => break,
         };
 
@@ -82,6 +96,8 @@ fn recv_loop(
             Ok(len) => len,
             Err(_) => continue,
         };
+
+        last_received = Instant::now();
 
         // Keepalives are decrypted to advance nonce but not displayed
         if prefix == KEEPALIVE_PREFIX {
@@ -104,6 +120,7 @@ pub fn start(
 ) -> anyhow::Result<()> {
     let send_transport = transport.try_clone()?;
     let recv_transport = transport.try_clone()?;
+    recv_transport.set_read_timeout(Some(Duration::from_secs(5)))?;
     let noise = Arc::new(Mutex::new(noise));
 
     let send_noise = noise.clone();

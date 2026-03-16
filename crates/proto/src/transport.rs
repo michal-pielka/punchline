@@ -5,4 +5,5 @@ pub trait Transport: Send {
     fn recv_from(&self, buf: &mut [u8]) -> Result<(usize, SocketAddr), std::io::Error>;
     fn local_addr(&self) -> Result<SocketAddr, std::io::Error>;
     fn try_clone(&self) -> Result<Box<dyn Transport>, std::io::Error>;
+    fn set_read_timeout(&self, dur: Option<std::time::Duration>) -> Result<(), std::io::Error>;
 }

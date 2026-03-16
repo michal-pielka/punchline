@@ -30,4 +30,8 @@ impl Transport for UdpTransport {
             socket: self.socket.try_clone()?,
         }))
     }
+
+    fn set_read_timeout(&self, dur: Option<std::time::Duration>) -> Result<(), std::io::Error> {
+        self.socket.set_read_timeout(dur)
+    }
 }
