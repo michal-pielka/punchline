@@ -1,55 +1,76 @@
 use std::net::SocketAddr;
 
-use anyhow::Context;
-use ed25519_dalek::{Signature, SigningKey, VerifyingKey};
-use punchline_proto::{crypto, transport::Transport};
-use tracing::{debug, info};
-use x25519_dalek::{PublicKey, SharedSecret};
+use punchline_proto::transport::Transport;
+use snow::{HandshakeState, TransportState};
 
+const NOISE_PATTERN: &str = "Noise_IK_25519_ChaChaPoly_SHA256";
+const PUNCH_PROBE: u8 = 0x00;
+const PUNCH_ACK: u8 = 0x01;
+
+fn recv_handshake<T: Transport>(transport: &T, buf: &mut [u8]) -> anyhow::Result<usize> {
+    loop {
+        let (len, _addr) = transport.recv_from(buf)?;
+        // Skip leftover punch packets
+        if len > 0 && (buf[0] == PUNCH_PROBE || buf[0] == PUNCH_ACK) {
+            continue;
+        }
+
+        return Ok(len);
+    }
+}
+
+// TODO: maybe add some payload instead of passing &[]
 pub fn exchange_keys<T: Transport>(
-    signing_key: &SigningKey,
-    verifying_key: &VerifyingKey,
+    private_key: &[u8; 32],
+    public_key: &[u8; 32],
+    peer_public_key: &[u8; 32],
     transport: &T,
     peer_addr: SocketAddr,
-) -> anyhow::Result<SharedSecret> {
-    let (ephemeral_private, ephemeral_public) = crypto::generate_x25519_keypair();
-    debug!("Generated ephemeral X25519 keypair");
+) -> anyhow::Result<TransportState> {
+    let builder = snow::Builder::new(NOISE_PATTERN.parse()?);
+    let mut handshake_state: HandshakeState;
+    let is_initiator = u64::from_be_bytes(public_key[..8].try_into()?)
+        < u64::from_be_bytes(peer_public_key[..8].try_into()?);
 
-    let signature = crypto::sign_ephemeral_key(signing_key, &ephemeral_public);
+    let mut enc_send_buf = [0u8; 1024];
+    let mut enc_recv_buf = [0u8; 1024];
+    let mut dec_recv_buf = [0u8; 1024];
 
-    let mut packet = Vec::new();
-    packet.extend_from_slice(ephemeral_public.as_bytes());
-    packet.extend_from_slice(&signature.to_bytes());
+    if is_initiator {
+        handshake_state = builder
+            .local_private_key(private_key)?
+            .remote_public_key(peer_public_key)?
+            .build_initiator()?;
 
-    transport
-        .send_to(&packet, peer_addr)
-        .context("Failed to send ephemeral key")?;
-    debug!("Sent signed ephemeral key");
+        // Encrypt
+        let len = handshake_state.write_message(&[], &mut enc_send_buf)?;
 
-    // Receive peer's ephemeral public and signature
-    // Loop to skip leftover punch packets
-    let mut buf = [0u8; 1024];
-    loop {
-        let (len, src_addr) = transport.recv_from(&mut buf)?;
-        if src_addr == peer_addr && len == 96 {
-            break;
-        }
-        debug!(len, %src_addr, "Skipping non-handshake packet");
-    }
-    debug!("Received peer's ephemeral key");
+        // Send
+        let _len = transport.send_to(&enc_send_buf[..len], peer_addr)?;
 
-    let peer_ephemeral_public_bytes: [u8; 32] = buf[..32]
-        .try_into()
-        .context("Invalid ephemeral key bytes")?;
-    let peer_ephemeral_public = PublicKey::from(peer_ephemeral_public_bytes);
+        // Receive
+        let len = recv_handshake(transport, &mut enc_recv_buf)?;
 
-    let peer_signature_bytes: [u8; 64] =
-        buf[32..96].try_into().context("Invalid signature bytes")?;
-    let peer_signature = Signature::from_bytes(&peer_signature_bytes);
+        // Decrypt
+        handshake_state.read_message(&enc_recv_buf[..len], &mut dec_recv_buf)?;
+    } else {
+        handshake_state = builder
+            .local_private_key(private_key)?
+            .remote_public_key(peer_public_key)?
+            .build_responder()?;
 
-    crypto::verify_ephemeral_key(verifying_key, &peer_ephemeral_public, &peer_signature)
-        .context("Peer ephemeral key signature verification failed")?;
-    info!("Peer ephemeral key verified");
+        // Receive
+        let len = recv_handshake(transport, &mut enc_recv_buf)?;
 
-    Ok(ephemeral_private.diffie_hellman(&peer_ephemeral_public))
+        // Decrypt
+        handshake_state.read_message(&enc_recv_buf[..len], &mut dec_recv_buf)?;
+
+        // Encrypt
+        let len = handshake_state.write_message(&[], &mut enc_send_buf)?;
+
+        // Send
+        let _len = transport.send_to(&enc_send_buf[..len], peer_addr)?;
+    };
+
+    Ok(handshake_state.into_transport_mode()?)
 }
