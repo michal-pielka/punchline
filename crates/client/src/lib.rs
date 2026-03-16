@@ -7,4 +7,5 @@ pub mod peers;
 pub mod punch;
 pub mod signal;
 pub mod stun;
+pub mod style;
 pub mod tui;
