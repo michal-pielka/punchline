@@ -3,6 +3,7 @@ use ratatui::{
     DefaultTerminal, Frame,
     crossterm::event::{KeyCode, KeyEvent, KeyEventKind},
     layout::{Constraint, Layout, Spacing},
+    style::Style as RatStyle,
     symbols::merge::MergeStrategy,
     text::Line,
     widgets::{Block, BorderType, Borders, Paragraph},
@@ -189,6 +190,7 @@ impl App {
         let sidebar_fill = Block::new()
             .borders(Borders::RIGHT)
             .border_type(BorderType::Plain)
+            .border_style(RatStyle::new().fg(self.style.colors.border))
             .merge_borders(MergeStrategy::Exact);
 
         f.render_widget(self.render_messages(), top_chunks[0]);
@@ -199,19 +201,21 @@ impl App {
     }
 
     fn render_messages(&self) -> Paragraph<'_> {
+        let colors = &self.style.colors;
         let text: Vec<Line> = self
             .messages
             .iter()
             .map(|m| {
-                let prefix = match m.sender {
-                    MessageSender::Me => "Me",
-                    MessageSender::Peer => self.peer_display_name(),
+                let (prefix, color) = match m.sender {
+                    MessageSender::Me => ("Me", colors.my_text),
+                    MessageSender::Peer => (self.peer_display_name(), colors.peer_text),
                 };
                 Line::raw(format!(
                     " [{}] <{prefix}> {}",
                     m.timestamp.format("%H:%M"),
                     m.text
                 ))
+                .style(RatStyle::new().fg(color))
             })
             .collect();
         Paragraph::new(text).block(
@@ -219,11 +223,13 @@ impl App {
                 .title(" punchline ")
                 .borders(Borders::ALL)
                 .border_type(BorderType::Plain)
+                .border_style(RatStyle::new().fg(colors.border))
                 .merge_borders(MergeStrategy::Exact),
         )
     }
 
     fn render_peer_panel(&self) -> Paragraph<'_> {
+        let colors = &self.style.colors;
         let key_short = self.truncated_peer_key();
         let peer_name = self.peer_display_name();
         Paragraph::new(vec![
@@ -238,11 +244,13 @@ impl App {
                 .title("── peer ")
                 .borders(Borders::ALL)
                 .border_type(BorderType::Plain)
+                .border_style(RatStyle::new().fg(colors.border))
                 .merge_borders(MergeStrategy::Exact),
         )
     }
 
     fn render_crypto_panel(&self) -> Paragraph<'_> {
+        let colors = &self.style.colors;
         Paragraph::new(vec![
             Line::raw(""),
             Line::raw(" pattern: Noise IK"),
@@ -256,15 +264,18 @@ impl App {
                 .title("── crypto ")
                 .borders(Borders::ALL)
                 .border_type(BorderType::Plain)
+                .border_style(RatStyle::new().fg(colors.border))
                 .merge_borders(MergeStrategy::Exact),
         )
     }
 
     fn render_input(&self) -> Paragraph<'_> {
+        let colors = &self.style.colors;
         Paragraph::new(format!(" > {}", self.input)).block(
             Block::new()
                 .borders(Borders::ALL)
                 .border_type(BorderType::Plain)
+                .border_style(RatStyle::new().fg(colors.border))
                 .merge_borders(MergeStrategy::Exact),
         )
     }
