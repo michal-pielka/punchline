@@ -21,8 +21,10 @@ fn send_loop(
         let msg = rx.recv()?;
         let msg_bytes = msg.as_bytes();
 
+        // Encrypt msg to buf
         let len = noise.lock().unwrap().write_message(msg_bytes, &mut buf)?;
 
+        // Send encrypted msg (buf)
         let mut packet = vec![MSG_PREFIX];
         packet.extend_from_slice(&buf[..len]);
 
