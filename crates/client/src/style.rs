@@ -14,12 +14,14 @@ struct ColorsToml {
     border: Option<String>,
     my_text: Option<String>,
     peer_text: Option<String>,
+    input_text: Option<String>,
 }
 
 pub struct Colors {
     pub border: Color,
     pub my_text: Color,
     pub peer_text: Color,
+    pub input_text: Color,
 }
 
 impl Default for Colors {
@@ -28,6 +30,7 @@ impl Default for Colors {
             border: Color::DarkGray,
             my_text: Color::Green,
             peer_text: Color::Blue,
+            input_text: Color::White,
         }
     }
 }
@@ -92,6 +95,11 @@ pub fn load_style() -> Style {
                 .as_deref()
                 .and_then(parse_color)
                 .unwrap_or(default_colors.peer_text),
+            input_text: colors
+                .input_text
+                .as_deref()
+                .and_then(parse_color)
+                .unwrap_or(default_colors.input_text),
         },
     }
 }

@@ -271,13 +271,15 @@ impl App {
 
     fn render_input(&self) -> Paragraph<'_> {
         let colors = &self.style.colors;
-        Paragraph::new(format!(" > {}", self.input)).block(
-            Block::new()
-                .borders(Borders::ALL)
-                .border_type(BorderType::Plain)
-                .border_style(RatStyle::new().fg(colors.border))
-                .merge_borders(MergeStrategy::Exact),
-        )
+        Paragraph::new(format!(" > {}", self.input))
+            .style(RatStyle::new().fg(colors.input_text))
+            .block(
+                Block::new()
+                    .borders(Borders::ALL)
+                    .border_type(BorderType::Plain)
+                    .border_style(RatStyle::new().fg(colors.border))
+                    .merge_borders(MergeStrategy::Exact),
+            )
     }
 
     fn peer_display_name(&self) -> &str {
