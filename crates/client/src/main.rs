@@ -164,7 +164,20 @@ fn connect(
     let tx_term = tx.clone();
 
     message::start(noise, &sock, tx, rx_out, peer_addr)?;
-    thread::spawn(move || todo!("read crossterm events, send into tx_term"));
+    thread::spawn(move || {
+        loop {
+            if let Ok(event) = crossterm::event::read() {
+                let app_event = match event {
+                    crossterm::event::Event::Key(key) => AppEvent::Key(key),
+                    crossterm::event::Event::Resize(w, h) => AppEvent::Resize(w, h),
+                    _ => continue,
+                };
+                if tx_term.send(app_event).is_err() {
+                    break;
+                }
+            }
+        }
+    });
 
     // TUI
     let terminal = ratatui::init();
