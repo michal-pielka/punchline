@@ -19,6 +19,7 @@ pub struct App {
     messages: Vec<ChatMessage>,
     input: String,
     peer: PeerInfo,
+    style: crate::style::Style,
     pub should_quit: bool,
 }
 
@@ -93,11 +94,12 @@ pub enum StepStatus {
 }
 
 impl App {
-    pub fn new(peer: PeerInfo) -> Self {
+    pub fn new(peer: PeerInfo, style: crate::style::Style) -> Self {
         App {
             messages: Vec::new(),
             input: String::new(),
             peer,
+            style,
             should_quit: false,
         }
     }

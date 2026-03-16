@@ -7,7 +7,7 @@ use clap::{CommandFactory, Parser};
 use punchline_client::cli::{Args, Command};
 use punchline_client::config::Config;
 use punchline_client::tui::{App, AppEvent, PeerInfo};
-use punchline_client::{config, handshake, identity, message, peers, punch, signal, stun};
+use punchline_client::{config, handshake, identity, message, peers, punch, signal, stun, style};
 use tracing::info;
 
 fn main() -> anyhow::Result<()> {
@@ -196,12 +196,14 @@ fn connect(
 
     // TUI - main thread
     let terminal = ratatui::init();
+    let style = style::load_style();
     let app = App::new(
         PeerInfo {
             alias: peer_alias,
             public_key: peer_key_resolved,
             addr: peer_addr.to_string(),
         },
+        style,
     );
     let result = app.run(terminal, rx, tx_out);
     ratatui::restore();
