@@ -174,6 +174,15 @@ impl App {
             .spacing(Spacing::Overlap(1))
             .split(main_chunks[0]);
 
+        // Sidebar: peer + crypto panels
+        let sidebar_chunks = Layout::vertical([
+            Constraint::Length(5),
+            Constraint::Length(6),
+            Constraint::Min(0),
+        ])
+        .spacing(Spacing::Overlap(1))
+        .split(top_chunks[1]);
+
         // Messages
         let text: Vec<Line> = self
             .messages
@@ -198,7 +207,7 @@ impl App {
                 .merge_borders(MergeStrategy::Exact),
         );
 
-        // Identity panel
+        // Peer panel
         let key_short = self.truncated_peer_key();
         let peer_name = self.peer_display_name();
         let peer = Paragraph::new(vec![
@@ -208,7 +217,22 @@ impl App {
         ])
         .block(
             Block::new()
-                .title(" PEER ")
+                .title("── PEER ")
+                .borders(Borders::ALL)
+                .border_type(BorderType::Plain)
+                .merge_borders(MergeStrategy::Exact),
+        );
+
+        // Crypto panel
+        let crypto = Paragraph::new(vec![
+            Line::raw(" PATTERN: Noise IK"),
+            Line::raw(" DH: X25519"),
+            Line::raw(" CIPHER: ChaCha20Poly1305"),
+            Line::raw(" HASH: SHA-256"),
+        ])
+        .block(
+            Block::new()
+                .title("── CRYPTO ")
                 .borders(Borders::ALL)
                 .border_type(BorderType::Plain)
                 .merge_borders(MergeStrategy::Exact),
@@ -223,7 +247,8 @@ impl App {
         );
 
         f.render_widget(messages, top_chunks[0]);
-        f.render_widget(peer, top_chunks[1]);
+        f.render_widget(peer, sidebar_chunks[0]);
+        f.render_widget(crypto, sidebar_chunks[1]);
         f.render_widget(input, main_chunks[1]);
     }
 
