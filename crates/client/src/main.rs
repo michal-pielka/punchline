@@ -2,7 +2,6 @@ use std::path::PathBuf;
 
 use anyhow::Context;
 use clap::{CommandFactory, Parser};
-use ed25519_dalek::VerifyingKey;
 use punchline_client::cli::{Args, Command};
 use punchline_client::config::Config;
 use punchline_client::{config, handshake, identity, message, peers, punch, signal, stun};
@@ -56,9 +55,8 @@ fn status(identity_path: Option<PathBuf>) -> anyhow::Result<()> {
 
     // Identity
     match identity::load_identity(identity_path) {
-        Ok(key) => {
-            let hex = hex::encode(key.verifying_key().to_bytes());
-            println!("Identity:       {}", &hex);
+        Ok((_secret, public)) => {
+            println!("Identity:       {}", hex::encode(public));
         }
         Err(_) => println!("Identity:       not found"),
     }
@@ -132,42 +130,33 @@ fn connect(
         })?,
     };
 
-    let identity = identity::load_identity(identity_path)
+    let (secret_key, public_key) = identity::load_identity(identity_path)
         .context("No identity found. Run 'punchline keygen' first.")?;
-    let public_key = identity.verifying_key();
-    info!(public_key = %hex::encode(public_key.to_bytes()), "Identity loaded");
+    info!(public_key = %hex::encode(public_key), "Identity loaded");
 
     let peer_key = peers::resolve_peer_key(peer_key)?;
-    let peer_public_key_bytes: [u8; 32] = hex::decode(&peer_key)
+    let peer_public_key: [u8; 32] = hex::decode(&peer_key)
         .context("Peer key is not valid hex")?
         .try_into()
         .map_err(|_| anyhow::anyhow!("Peer key must be 32 bytes (64 hex chars)"))?;
-    let peer_public_key = VerifyingKey::from_bytes(&peer_public_key_bytes)
-        .context("Peer key is not a valid Ed25519 public key")?;
 
     let (external_addr, sock) =
         stun::get_external_addr(stun_addr).context("STUN discovery failed")?;
     info!(%external_addr, "Discovered external address");
 
-    let peer = signal::pair_with_peer(
-        &identity,
-        external_addr,
-        &public_key,
-        &peer_public_key,
-        signal_addr,
-    )
-    .context("Signaling failed")?;
+    let peer = signal::pair_with_peer(external_addr, &public_key, &peer_public_key, signal_addr)
+        .context("Signaling failed")?;
     let peer_addr = peer.target_external_addr;
     info!(%peer_addr, peer_key = %peer.target_public_key, "Paired with peer");
 
     punch::establish(&sock, peer_addr).context("Hole punching failed")?;
     info!("Connection established, ready for messages");
 
-    let shared_secret = handshake::exchange_keys(&identity, &peer_public_key, &sock, peer_addr)
-        .context("Key exchange failed")?;
+    let noise =
+        handshake::exchange_keys(&secret_key, &public_key, &peer_public_key, &sock, peer_addr)
+            .context("Key exchange failed")?;
 
-    let is_initiator = public_key.as_bytes() < peer_public_key.as_bytes();
-    message::start(&shared_secret, &sock, peer_addr, is_initiator)?;
+    message::start(noise, &sock, peer_addr)?;
 
     Ok(())
 }
