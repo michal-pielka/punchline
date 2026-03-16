@@ -1,7 +1,8 @@
 use std::net::SocketAddr;
-use std::sync::mpsc::{Receiver, Sender};
+use std::sync::mpsc::{Receiver, RecvTimeoutError, Sender};
 use std::sync::{Arc, Mutex};
 use std::thread;
+use std::time::Duration;
 
 use punchline_proto::transport::Transport;
 use snow::TransportState;
@@ -9,6 +10,26 @@ use snow::TransportState;
 use crate::tui::AppEvent;
 
 const MSG_PREFIX: u8 = 0x02;
+const KEEPALIVE_PREFIX: u8 = 0x03;
+const KEEPALIVE_INTERVAL: Duration = Duration::from_secs(10);
+
+fn send_encrypted(
+    noise: &Arc<Mutex<TransportState>>,
+    transport: &dyn Transport,
+    peer_addr: SocketAddr,
+    prefix: u8,
+    payload: &[u8],
+) -> bool {
+    let mut buf = [0u8; 1024];
+    let len = match noise.lock().unwrap().write_message(payload, &mut buf) {
+        Ok(len) => len,
+        Err(_) => return false,
+    };
+
+    let mut packet = vec![prefix];
+    packet.extend_from_slice(&buf[..len]);
+    transport.send_to(&packet, peer_addr).is_ok()
+}
 
 fn send_loop(
     noise: Arc<Mutex<TransportState>>,
@@ -16,22 +37,16 @@ fn send_loop(
     rx: Receiver<String>,
     peer_addr: SocketAddr,
 ) {
-    let mut buf = [0u8; 1024];
-
-    while let Ok(msg) = rx.recv() {
-        let len = match noise
-            .lock()
-            .unwrap()
-            .write_message(msg.as_bytes(), &mut buf)
-        {
-            Ok(len) => len,
-            Err(_) => continue,
-        };
-
-        let mut packet = vec![MSG_PREFIX];
-        packet.extend_from_slice(&buf[..len]);
-
-        let _ = transport.send_to(&packet, peer_addr);
+    loop {
+        match rx.recv_timeout(KEEPALIVE_INTERVAL) {
+            Ok(msg) => {
+                send_encrypted(&noise, &*transport, peer_addr, MSG_PREFIX, msg.as_bytes());
+            }
+            Err(RecvTimeoutError::Timeout) => {
+                send_encrypted(&noise, &*transport, peer_addr, KEEPALIVE_PREFIX, &[]);
+            }
+            Err(RecvTimeoutError::Disconnected) => break,
+        }
     }
 }
 
@@ -50,7 +65,12 @@ fn recv_loop(
             Err(_) => break,
         };
 
-        if src_addr != peer_addr || len < 2 || buf[0] != MSG_PREFIX {
+        if src_addr != peer_addr || len < 2 {
+            continue;
+        }
+
+        let prefix = buf[0];
+        if prefix != MSG_PREFIX && prefix != KEEPALIVE_PREFIX {
             continue;
         }
 
@@ -62,6 +82,11 @@ fn recv_loop(
             Ok(len) => len,
             Err(_) => continue,
         };
+
+        // Keepalives are decrypted to advance nonce but not displayed
+        if prefix == KEEPALIVE_PREFIX {
+            continue;
+        }
 
         let msg = String::from_utf8_lossy(&plaintext[..plain_len]).to_string();
         if tx.send(AppEvent::MessageReceived(msg)).is_err() {
