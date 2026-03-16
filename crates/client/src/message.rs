@@ -4,7 +4,7 @@ use std::thread;
 
 use punchline_proto::transport::Transport;
 use snow::TransportState;
-use tracing::{debug, error, info};
+use tracing::{debug, error};
 
 const MSG_PREFIX: u8 = 0x02;
 
@@ -35,12 +35,14 @@ fn send_loop(
 fn recv_loop(
     noise: Arc<Mutex<TransportState>>,
     transport: &dyn Transport,
+    tx: std::sync::mpsc::Sender<String>,
     peer_addr: SocketAddr,
 ) -> anyhow::Result<()> {
     let mut buf = [0u8; 1024];
     let mut plaintext = [0u8; 1024];
 
     loop {
+        // Receive encrypted msg (buf) - blocking
         let (len, src_addr) = transport.recv_from(&mut buf)?;
 
         if src_addr != peer_addr {
@@ -51,6 +53,7 @@ fn recv_loop(
             continue;
         }
 
+        // Decrypt into plaintext
         let plain_len = match noise
             .lock()
             .unwrap()
@@ -63,8 +66,10 @@ fn recv_loop(
             }
         };
 
-        let message = String::from_utf8_lossy(&plaintext[..plain_len]);
-        info!("{message}");
+        let msg = String::from_utf8_lossy(&plaintext[..plain_len]);
+
+        // Send to TUI
+        tx.send(msg.to_string())?;
     }
 }
 
@@ -85,7 +90,7 @@ pub fn start(
         }
     });
 
-    recv_loop(noise, transport, peer_addr)?;
+    recv_loop(noise, transport, tx, peer_addr)?;
 
     Ok(())
 }
