@@ -107,11 +107,17 @@ impl App {
                             self.messages.push(msg.clone());
                             let _ = tx_out.send(msg);
                         }
-                        _ => todo!(),
+                        KeyCode::Backspace => {
+                            self.input.pop();
+                        }
+                        KeyCode::Char(c) => {
+                            self.input.push(c);
+                        }
+                        _ => {}
                     }
                 }
 
-                _ => todo!(),
+                _ => {}
             }
 
             terminal.draw(|f| self.render(f))?;
