@@ -142,13 +142,14 @@ impl App {
         }
     }
 
-    fn render(&mut self, f: &mut Frame) {
-        let app_block = Block::new()
-            .borders(Borders::ALL)
-            .border_type(BorderType::Rounded);
+    fn render(&self, f: &mut Frame) {
         let text: Vec<Line> = self.messages.iter().map(Line::raw).collect();
-        let messages_paragraph = Paragraph::new(text);
+        let messages = Paragraph::new(text).block(
+            Block::new()
+                .borders(Borders::ALL)
+                .border_type(BorderType::Rounded),
+        );
 
-        app_block.render(f.area(), f.buffer_mut());
+        f.render_widget(messages, f.area());
     }
 }
