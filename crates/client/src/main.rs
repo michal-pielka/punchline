@@ -172,13 +172,16 @@ fn connect(
             .context("Key exchange failed")?;
 
     // App channel
+    // tx: recv thread -> main thread
+    // tx_term: term thread -> main thread
+    // rx: main thread <- recv thread | term thread
     let (tx, rx) = mpsc::channel::<AppEvent>();
+    let tx_term = tx.clone();
 
     // Message channel
+    // tx_out: main thread -> send thread
+    // rx_out: send thread <- main thread
     let (tx_out, rx_out) = mpsc::channel::<String>();
-
-    // Terminal event thread
-    let tx_term = tx.clone();
 
     // Spawn message recv, send threads
     message::start(noise, &sock, tx, rx_out, peer_addr)?;
