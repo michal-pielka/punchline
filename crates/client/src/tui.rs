@@ -3,10 +3,13 @@ use ratatui::{
     crossterm::event::{self, Event, KeyCode, KeyEvent, KeyEventKind},
     widgets::{Block, BorderType, Borders, Widget},
 };
+use std::sync::mpsc::{Receiver, Sender};
 
 pub struct App {
+    messages: Vec<String>,
+    input: String,
     pub should_quit: bool,
-    pub state: AppState,
+    // pub state: AppState,
 }
 
 pub struct AppState {
@@ -58,8 +61,27 @@ pub enum StepStatus {
     Failed,
 }
 
+impl Default for App {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl App {
-    pub fn run(mut self, mut terminal: DefaultTerminal) -> anyhow::Result<()> {
+    pub fn new() -> Self {
+        App {
+            messages: Vec::new(),
+            input: String::new(),
+            should_quit: false,
+        }
+    }
+
+    pub fn run(
+        mut self,
+        mut terminal: DefaultTerminal,
+        rx: Receiver<AppEvent>,
+        tx_out: Sender<String>,
+    ) -> anyhow::Result<()> {
         while !self.should_quit {
             terminal.draw(|f| self.render(f))?;
 

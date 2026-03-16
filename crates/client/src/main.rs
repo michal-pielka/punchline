@@ -6,7 +6,7 @@ use anyhow::Context;
 use clap::{CommandFactory, Parser};
 use punchline_client::cli::{Args, Command};
 use punchline_client::config::Config;
-use punchline_client::tui::AppEvent;
+use punchline_client::tui::{App, AppEvent};
 use punchline_client::{config, handshake, identity, message, peers, punch, signal, stun};
 use tracing::info;
 
@@ -168,8 +168,8 @@ fn connect(
 
     // TUI
     let terminal = ratatui::init();
-    // let app = App::new();
-    // let result = app.run(terminal, rx);
+    let app = App::new();
+    let result = app.run(terminal, rx, tx_out);
     ratatui::restore();
 
     // result
