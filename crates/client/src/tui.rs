@@ -183,7 +183,13 @@ impl App {
         .spacing(Spacing::Overlap(1))
         .split(top_chunks[1]);
 
-        // Messages
+        f.render_widget(self.render_messages(), top_chunks[0]);
+        f.render_widget(self.render_peer_panel(), sidebar_chunks[0]);
+        f.render_widget(self.render_crypto_panel(), sidebar_chunks[1]);
+        f.render_widget(self.render_input(), main_chunks[1]);
+    }
+
+    fn render_messages(&self) -> Paragraph<'_> {
         let text: Vec<Line> = self
             .messages
             .iter()
@@ -199,18 +205,19 @@ impl App {
                 ))
             })
             .collect();
-        let messages = Paragraph::new(text).block(
+        Paragraph::new(text).block(
             Block::new()
                 .title(" PUNCHLINE ")
                 .borders(Borders::ALL)
                 .border_type(BorderType::Plain)
                 .merge_borders(MergeStrategy::Exact),
-        );
+        )
+    }
 
-        // Peer panel
+    fn render_peer_panel(&self) -> Paragraph<'_> {
         let key_short = self.truncated_peer_key();
         let peer_name = self.peer_display_name();
-        let peer = Paragraph::new(vec![
+        Paragraph::new(vec![
             Line::raw(format!(" ALIAS: {peer_name}")),
             Line::raw(format!(" KEY: {key_short}")),
             Line::raw(format!(" ADDR: {}", self.peer.addr)),
@@ -221,10 +228,11 @@ impl App {
                 .borders(Borders::ALL)
                 .border_type(BorderType::Plain)
                 .merge_borders(MergeStrategy::Exact),
-        );
+        )
+    }
 
-        // Crypto panel
-        let crypto = Paragraph::new(vec![
+    fn render_crypto_panel(&self) -> Paragraph<'_> {
+        Paragraph::new(vec![
             Line::raw(" PATTERN: Noise IK"),
             Line::raw(" DH: X25519"),
             Line::raw(" CIPHER: ChaCha20Poly1305"),
@@ -236,20 +244,16 @@ impl App {
                 .borders(Borders::ALL)
                 .border_type(BorderType::Plain)
                 .merge_borders(MergeStrategy::Exact),
-        );
+        )
+    }
 
-        // Input
-        let input = Paragraph::new(format!(" > {}", self.input)).block(
+    fn render_input(&self) -> Paragraph<'_> {
+        Paragraph::new(format!(" > {}", self.input)).block(
             Block::new()
                 .borders(Borders::ALL)
                 .border_type(BorderType::Plain)
                 .merge_borders(MergeStrategy::Exact),
-        );
-
-        f.render_widget(messages, top_chunks[0]);
-        f.render_widget(peer, sidebar_chunks[0]);
-        f.render_widget(crypto, sidebar_chunks[1]);
-        f.render_widget(input, main_chunks[1]);
+        )
     }
 
     fn peer_display_name(&self) -> &str {
