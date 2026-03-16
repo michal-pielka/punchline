@@ -160,10 +160,10 @@ fn connect(
     // Message channel
     let (tx_out, rx_out) = mpsc::channel::<String>();
 
-    message::start(noise, &sock, tx_out, rx_out, peer_addr)?;
-
     // Terminal event thread
     let tx_term = tx.clone();
+
+    message::start(noise, &sock, tx, rx_out, peer_addr)?;
     thread::spawn(move || todo!("read crossterm events, send into tx_term"));
 
     // TUI
