@@ -15,6 +15,8 @@ struct ColorsToml {
     my_text: Option<String>,
     peer_text: Option<String>,
     input_text: Option<String>,
+    sidebar_key: Option<String>,
+    sidebar_value: Option<String>,
 }
 
 pub struct Colors {
@@ -22,6 +24,8 @@ pub struct Colors {
     pub my_text: Color,
     pub peer_text: Color,
     pub input_text: Color,
+    pub sidebar_key: Color,
+    pub sidebar_value: Color,
 }
 
 impl Default for Colors {
@@ -31,6 +35,8 @@ impl Default for Colors {
             my_text: Color::Reset,
             peer_text: Color::Reset,
             input_text: Color::Reset,
+            sidebar_key: Color::Reset,
+            sidebar_value: Color::Reset,
         }
     }
 }
@@ -100,6 +106,16 @@ pub fn load_style() -> Style {
                 .as_deref()
                 .and_then(parse_color)
                 .unwrap_or(default_colors.input_text),
+            sidebar_key: colors
+                .sidebar_key
+                .as_deref()
+                .and_then(parse_color)
+                .unwrap_or(default_colors.sidebar_key),
+            sidebar_value: colors
+                .sidebar_value
+                .as_deref()
+                .and_then(parse_color)
+                .unwrap_or(default_colors.sidebar_value),
         },
     }
 }

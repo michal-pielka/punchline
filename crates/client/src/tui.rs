@@ -5,7 +5,7 @@ use ratatui::{
     layout::{Constraint, Layout, Spacing},
     style::Style as RatStyle,
     symbols::merge::MergeStrategy,
-    text::Line,
+    text::{Line, Span},
     widgets::{Block, BorderType, Borders, Paragraph},
 };
 use std::sync::mpsc::{Receiver, Sender};
@@ -228,15 +228,23 @@ impl App {
         )
     }
 
+    fn sidebar_line(&self, key: &str, value: &str) -> Line<'_> {
+        let colors = &self.style.colors;
+        Line::from(vec![
+            Span::styled(format!(" {key}: "), RatStyle::new().fg(colors.sidebar_key)),
+            Span::styled(value.to_string(), RatStyle::new().fg(colors.sidebar_value)),
+        ])
+    }
+
     fn render_peer_panel(&self) -> Paragraph<'_> {
         let colors = &self.style.colors;
         let key_short = self.truncated_peer_key();
-        let peer_name = self.peer_display_name();
+        let peer_name = self.peer_display_name().to_string();
         Paragraph::new(vec![
             Line::raw(""),
-            Line::raw(format!(" alias: {peer_name}")),
-            Line::raw(format!(" key: {key_short}")),
-            Line::raw(format!(" addr: {}", self.peer.addr)),
+            self.sidebar_line("alias", &peer_name),
+            self.sidebar_line("key", &key_short),
+            self.sidebar_line("addr", &self.peer.addr),
             Line::raw(""),
         ])
         .block(
@@ -253,10 +261,10 @@ impl App {
         let colors = &self.style.colors;
         Paragraph::new(vec![
             Line::raw(""),
-            Line::raw(" pattern: Noise IK"),
-            Line::raw(" dh: X25519"),
-            Line::raw(" cipher: ChaCha20Poly1305"),
-            Line::raw(" hash: SHA-256"),
+            self.sidebar_line("pattern", "Noise IK"),
+            self.sidebar_line("dh", "X25519"),
+            self.sidebar_line("cipher", "ChaCha20Poly1305"),
+            self.sidebar_line("hash", "SHA-256"),
             Line::raw(""),
         ])
         .block(
