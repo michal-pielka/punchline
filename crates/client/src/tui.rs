@@ -1,6 +1,6 @@
 use ratatui::{
     DefaultTerminal, Frame,
-    crossterm::event::{self, Event, KeyCode, KeyEvent, KeyEventKind},
+    crossterm::event::{KeyCode, KeyEvent, KeyEventKind},
     widgets::{Block, BorderType, Borders, Widget},
 };
 use std::sync::mpsc::{Receiver, Sender};
@@ -83,11 +83,41 @@ impl App {
         tx_out: Sender<String>,
     ) -> anyhow::Result<()> {
         while !self.should_quit {
+            let event = rx.recv()?;
+
+            match event {
+                AppEvent::MessageReceived(msg) | AppEvent::MessageSent(msg) => {
+                    self.messages.push(msg);
+                }
+
+                AppEvent::Key(k) => {
+                    if k.kind != KeyEventKind::Press {
+                        continue;
+                    }
+
+                    match k.code {
+                        KeyCode::Esc => self.should_quit = true,
+                        KeyCode::Enter => {
+                            if self.input.is_empty() {
+                                continue;
+                            }
+
+                            let msg: String = self.input.drain(..).collect();
+                            self.messages.push(msg.clone());
+                            let _ = tx_out.send(msg);
+                        }
+                        _ => todo!(),
+                    }
+                }
+
+                _ => todo!(),
+            }
+
             terminal.draw(|f| self.render(f))?;
 
-            if let Event::Key(key) = event::read()? {
-                self.handle_key(key);
-            }
+            // if let Event::Key(key) = event::read()? {
+            //     self.handle_key(key);
+            // }
         }
 
         Ok(())
