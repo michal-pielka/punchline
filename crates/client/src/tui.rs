@@ -2,8 +2,9 @@ use chrono::{DateTime, Local};
 use ratatui::{
     DefaultTerminal, Frame,
     crossterm::event::{KeyCode, KeyEvent, KeyEventKind},
+    layout::{Constraint, Layout},
     text::Line,
-    widgets::{Block, BorderType, Borders, Paragraph, Widget},
+    widgets::{Block, BorderType, Borders, Paragraph},
 };
 use std::sync::mpsc::{Receiver, Sender};
 
@@ -161,6 +162,9 @@ impl App {
     }
 
     fn render(&self, f: &mut Frame) {
+        let chunks = Layout::vertical([Constraint::Min(1), Constraint::Length(3)]).split(f.area());
+
+        // Messages
         let text: Vec<Line> = self
             .messages
             .iter()
@@ -182,6 +186,14 @@ impl App {
                 .border_type(BorderType::Rounded),
         );
 
-        f.render_widget(messages, f.area());
+        // Input
+        let input = Paragraph::new(format!(" > {}", self.input)).block(
+            Block::new()
+                .borders(Borders::ALL)
+                .border_type(BorderType::Rounded),
+        );
+
+        f.render_widget(messages, chunks[0]);
+        f.render_widget(input, chunks[1]);
     }
 }
