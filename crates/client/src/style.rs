@@ -27,10 +27,10 @@ pub struct Colors {
 impl Default for Colors {
     fn default() -> Self {
         Colors {
-            border: Color::DarkGray,
-            my_text: Color::Green,
-            peer_text: Color::Blue,
-            input_text: Color::White,
+            border: Color::Reset,
+            my_text: Color::Reset,
+            peer_text: Color::Reset,
+            input_text: Color::Reset,
         }
     }
 }
