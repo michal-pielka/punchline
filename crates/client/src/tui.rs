@@ -176,8 +176,8 @@ impl App {
 
         // Sidebar: peer + crypto panels
         let sidebar_chunks = Layout::vertical([
-            Constraint::Length(5),
-            Constraint::Length(6),
+            Constraint::Length(7),
+            Constraint::Length(8),
             Constraint::Min(0),
         ])
         .spacing(Spacing::Overlap(1))
@@ -192,8 +192,8 @@ impl App {
         f.render_widget(self.render_messages(), top_chunks[0]);
         f.render_widget(self.render_peer_panel(), sidebar_chunks[0]);
         f.render_widget(self.render_crypto_panel(), sidebar_chunks[1]);
-        f.render_widget(sidebar_fill, sidebar_chunks[2]);
         f.render_widget(self.render_input(), main_chunks[1]);
+        f.render_widget(sidebar_fill, sidebar_chunks[2]);
     }
 
     fn render_messages(&self) -> Paragraph<'_> {
@@ -214,7 +214,7 @@ impl App {
             .collect();
         Paragraph::new(text).block(
             Block::new()
-                .title(" PUNCHLINE ")
+                .title(" punchline ")
                 .borders(Borders::ALL)
                 .border_type(BorderType::Plain)
                 .merge_borders(MergeStrategy::Exact),
@@ -225,13 +225,15 @@ impl App {
         let key_short = self.truncated_peer_key();
         let peer_name = self.peer_display_name();
         Paragraph::new(vec![
-            Line::raw(format!(" ALIAS: {peer_name}")),
-            Line::raw(format!(" KEY: {key_short}")),
-            Line::raw(format!(" ADDR: {}", self.peer.addr)),
+            Line::raw(""),
+            Line::raw(format!(" alias: {peer_name}")),
+            Line::raw(format!(" key: {key_short}")),
+            Line::raw(format!(" addr: {}", self.peer.addr)),
+            Line::raw(""),
         ])
         .block(
             Block::new()
-                .title("── PEER ")
+                .title("── peer ")
                 .borders(Borders::ALL)
                 .border_type(BorderType::Plain)
                 .merge_borders(MergeStrategy::Exact),
@@ -240,14 +242,16 @@ impl App {
 
     fn render_crypto_panel(&self) -> Paragraph<'_> {
         Paragraph::new(vec![
-            Line::raw(" PATTERN: Noise IK"),
-            Line::raw(" DH: X25519"),
-            Line::raw(" CIPHER: ChaCha20Poly1305"),
-            Line::raw(" HASH: SHA-256"),
+            Line::raw(""),
+            Line::raw(" pattern: Noise IK"),
+            Line::raw(" dh: X25519"),
+            Line::raw(" cipher: ChaCha20Poly1305"),
+            Line::raw(" hash: SHA-256"),
+            Line::raw(""),
         ])
         .block(
             Block::new()
-                .title("── CRYPTO ")
+                .title("── crypto ")
                 .borders(Borders::ALL)
                 .border_type(BorderType::Plain)
                 .merge_borders(MergeStrategy::Exact),
