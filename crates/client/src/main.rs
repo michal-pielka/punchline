@@ -2,11 +2,13 @@ use std::path::PathBuf;
 use std::sync::mpsc;
 use std::thread;
 
+use anyhow::Context;
 use clap::{CommandFactory, Parser};
 use punchline_client::cli::{Args, Command};
 use punchline_client::config::Config;
 use punchline_client::tui::AppEvent;
-use punchline_client::{config, identity, peers, stun};
+use punchline_client::{config, handshake, identity, message, peers, punch, signal, stun};
+use tracing::info;
 
 fn main() -> anyhow::Result<()> {
     let args = Args::parse();
@@ -107,6 +109,53 @@ fn connect(
     stun_addr: Option<String>,
     signal_addr: Option<String>,
 ) -> anyhow::Result<()> {
+    let cfg = config::load_config().unwrap_or(Config {
+        stun_server: None,
+        signal_server: None,
+    });
+
+    let stun_addr = match stun_addr {
+        Some(s) => s.parse().context("Invalid --stun address")?,
+        None => cfg.stun_server.ok_or_else(|| {
+            anyhow::anyhow!("No STUN address. Use --stun or set 'stun_server' in config.toml")
+        })?,
+    };
+
+    let signal_addr = match signal_addr {
+        Some(s) => s.parse().context("Invalid --signal address")?,
+        None => cfg.signal_server.ok_or_else(|| {
+            anyhow::anyhow!("No signal address. Use --signal or set 'signal_server' in config.toml")
+        })?,
+    };
+
+    let (secret_key, public_key) = identity::load_identity(identity_path)
+        .context("No identity found. Run 'punchline keygen' first.")?;
+    info!(public_key = %hex::encode(public_key), "Identity loaded");
+
+    let peer_key = peers::resolve_peer_key(peer_key)?;
+    let peer_public_key: [u8; 32] = hex::decode(&peer_key)
+        .context("Peer key is not valid hex")?
+        .try_into()
+        .map_err(|_| anyhow::anyhow!("Peer key must be 32 bytes (64 hex chars)"))?;
+
+    let (external_addr, sock) =
+        stun::get_external_addr(stun_addr).context("STUN discovery failed")?;
+    info!(%external_addr, "Discovered external address");
+
+    let peer = signal::pair_with_peer(external_addr, &public_key, &peer_public_key, signal_addr)
+        .context("Signaling failed")?;
+    let peer_addr = peer.target_external_addr;
+    info!(%peer_addr, peer_key = %peer.target_public_key, "Paired with peer");
+
+    punch::establish(&sock, peer_addr).context("Hole punching failed")?;
+    info!("Connection established, ready for messages");
+
+    let noise =
+        handshake::exchange_keys(&secret_key, &public_key, &peer_public_key, &sock, peer_addr)
+            .context("Key exchange failed")?;
+
+    message::start(noise, &sock, peer_addr)?;
+
     let (tx, rx) = mpsc::channel::<AppEvent>();
 
     // Terminal event thread
