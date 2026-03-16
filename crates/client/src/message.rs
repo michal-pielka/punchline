@@ -1,4 +1,3 @@
-use std::io;
 use std::net::SocketAddr;
 use std::sync::{Arc, Mutex};
 use std::thread;
@@ -15,29 +14,19 @@ fn send_loop(
     rx: std::sync::mpsc::Receiver<String>,
     peer_addr: SocketAddr,
 ) -> anyhow::Result<()> {
-    let stdin = io::stdin();
-    let mut line = String::new();
     let mut buf = [0u8; 1024];
 
     loop {
-        line.clear();
-        stdin.read_line(&mut line)?;
+        // Blocking
+        let msg = rx.recv()?;
+        let msg_bytes = msg.as_bytes();
 
-        let trimmed = line.trim();
-        if trimmed.is_empty() {
-            continue;
-        }
-
-        let len = noise
-            .lock()
-            .unwrap()
-            .write_message(trimmed.as_bytes(), &mut buf)?;
+        let len = noise.lock().unwrap().write_message(msg_bytes, &mut buf)?;
 
         let mut packet = vec![MSG_PREFIX];
         packet.extend_from_slice(&buf[..len]);
 
         transport.send_to(&packet, peer_addr)?;
-        debug!("Sent: {trimmed}");
     }
 }
 
