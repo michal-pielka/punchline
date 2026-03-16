@@ -77,6 +77,42 @@ impl App {
         }
     }
 
+    fn handle_event(&mut self, event: AppEvent, tx_out: &Sender<String>) {
+        match event {
+            AppEvent::MessageReceived(msg) | AppEvent::MessageSent(msg) => {
+                self.messages.push(msg);
+            }
+
+            AppEvent::Key(k) => {
+                if k.kind != KeyEventKind::Press {
+                    return;
+                }
+
+                match k.code {
+                    KeyCode::Esc => self.should_quit = true,
+                    KeyCode::Enter => {
+                        if self.input.is_empty() {
+                            return;
+                        }
+
+                        let msg: String = self.input.drain(..).collect();
+                        self.messages.push(msg.clone());
+                        let _ = tx_out.send(msg);
+                    }
+                    KeyCode::Backspace => {
+                        self.input.pop();
+                    }
+                    KeyCode::Char(c) => {
+                        self.input.push(c);
+                    }
+                    _ => {}
+                }
+            }
+
+            _ => {}
+        }
+    }
+
     pub fn run(
         mut self,
         mut terminal: DefaultTerminal,
@@ -85,46 +121,9 @@ impl App {
     ) -> anyhow::Result<()> {
         while !self.should_quit {
             let event = rx.recv()?;
-
-            match event {
-                AppEvent::MessageReceived(msg) | AppEvent::MessageSent(msg) => {
-                    self.messages.push(msg);
-                }
-
-                AppEvent::Key(k) => {
-                    if k.kind != KeyEventKind::Press {
-                        continue;
-                    }
-
-                    match k.code {
-                        KeyCode::Esc => self.should_quit = true,
-                        KeyCode::Enter => {
-                            if self.input.is_empty() {
-                                continue;
-                            }
-
-                            let msg: String = self.input.drain(..).collect();
-                            self.messages.push(msg.clone());
-                            let _ = tx_out.send(msg);
-                        }
-                        KeyCode::Backspace => {
-                            self.input.pop();
-                        }
-                        KeyCode::Char(c) => {
-                            self.input.push(c);
-                        }
-                        _ => {}
-                    }
-                }
-
-                _ => {}
-            }
+            self.handle_event(event, &tx_out);
 
             terminal.draw(|f| self.render(f))?;
-
-            // if let Event::Key(key) = event::read()? {
-            //     self.handle_key(key);
-            // }
         }
 
         Ok(())
