@@ -1,6 +1,6 @@
 use std::path::PathBuf;
-use std::sync::mpsc;
-use std::thread;
+use std::sync::mpsc::{self, Sender};
+use std::thread::{self, JoinHandle};
 
 use anyhow::Context;
 use clap::{CommandFactory, Parser};
@@ -103,6 +103,23 @@ fn status(identity_path: Option<PathBuf>) -> anyhow::Result<()> {
     Ok(())
 }
 
+fn spawn_terminal_thread(tx: Sender<AppEvent>) -> JoinHandle<()> {
+    thread::spawn(move || {
+        loop {
+            if let Ok(event) = crossterm::event::read() {
+                let app_event = match event {
+                    crossterm::event::Event::Key(key) => AppEvent::Key(key),
+                    crossterm::event::Event::Resize(w, h) => AppEvent::Resize(w, h),
+                    _ => continue,
+                };
+                if tx.send(app_event).is_err() {
+                    break;
+                }
+            }
+        }
+    })
+}
+
 fn connect(
     identity_path: Option<PathBuf>,
     peer_key: &str,
@@ -163,28 +180,17 @@ fn connect(
     // Terminal event thread
     let tx_term = tx.clone();
 
+    // Spawn message recv, send threads
     message::start(noise, &sock, tx, rx_out, peer_addr)?;
-    thread::spawn(move || {
-        loop {
-            if let Ok(event) = crossterm::event::read() {
-                let app_event = match event {
-                    crossterm::event::Event::Key(key) => AppEvent::Key(key),
-                    crossterm::event::Event::Resize(w, h) => AppEvent::Resize(w, h),
-                    _ => continue,
-                };
-                if tx_term.send(app_event).is_err() {
-                    break;
-                }
-            }
-        }
-    });
 
-    // TUI
+    // Spawn terminal thread
+    let _terminal_handle = spawn_terminal_thread(tx_term);
+
+    // TUI - main thread
     let terminal = ratatui::init();
     let app = App::new();
     let result = app.run(terminal, rx, tx_out);
     ratatui::restore();
 
-    // result
-    Ok(())
+    result
 }
