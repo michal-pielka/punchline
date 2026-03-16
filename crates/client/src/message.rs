@@ -7,11 +7,14 @@ use punchline_proto::transport::Transport;
 use snow::TransportState;
 use tracing::{debug, error, info};
 
+use crate::tui::AppEvent;
+
 const MSG_PREFIX: u8 = 0x02;
 
 fn send_loop(
     noise: Arc<Mutex<TransportState>>,
     transport: Box<dyn Transport>,
+    rx: std::sync::mpsc::Receiver<AppEvent>,
     peer_addr: SocketAddr,
 ) -> anyhow::Result<()> {
     let stdin = io::stdin();
@@ -79,6 +82,8 @@ fn recv_loop(
 pub fn start(
     noise: TransportState,
     transport: &dyn Transport,
+    tx: std::sync::mpsc::Sender<AppEvent>,
+    rx: std::sync::mpsc::Receiver<AppEvent>,
     peer_addr: SocketAddr,
 ) -> anyhow::Result<()> {
     let send_transport = transport.try_clone()?;
@@ -86,7 +91,7 @@ pub fn start(
 
     let send_noise = noise.clone();
     thread::spawn(move || {
-        if let Err(e) = send_loop(send_noise, send_transport, peer_addr) {
+        if let Err(e) = send_loop(send_noise, send_transport, rx, peer_addr) {
             error!(%e, "Send loop error");
         }
     });
