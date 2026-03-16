@@ -17,6 +17,19 @@ pub struct AppState {
     pub peer_alias: Option<String>,
 }
 
+pub enum AppEvent {
+    Key(crossterm::event::KeyEvent),
+    Resize(u16, u16),
+    StepUpdate {
+        step: ConnectionStep,
+        status: StepStatus,
+        detail: String,
+    },
+    MessageReceived(String),
+    MessageSent(String),
+    Error(String),
+}
+
 pub enum Phase {
     Connecting,
     Connected,

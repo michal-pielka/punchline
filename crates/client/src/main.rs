@@ -1,27 +1,27 @@
 use std::path::PathBuf;
 
 use anyhow::Context;
-use clap::{CommandFactory, Parser};
-use punchline_client::cli::{Args, Command};
+use clap::Parser;
 use punchline_client::config::Config;
-use punchline_client::tui;
 use punchline_client::{config, handshake, identity, message, peers, punch, signal, stun};
 use tracing::info;
 
 fn main() -> anyhow::Result<()> {
-    let app_state = tui::AppState {};
+    // let app_state = tui::AppState {};
 
-    let app = tui::App {
-        should_quit: false,
-        state: app_state,
-    };
+    // let app = tui::App {
+    //     should_quit: false,
+    //     state: app_state,
+    // };
 
-    let terminal = ratatui::init();
-    let app_result = app.run(terminal);
+    // let terminal = ratatui::init();
+    // let app_result = app.run(terminal);
+    //
+    // ratatui::restore();
+    //
+    // app_result
 
-    ratatui::restore();
-
-    app_result
+    Ok(())
 }
 
 // fn main() -> anyhow::Result<()> {
