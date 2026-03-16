@@ -83,31 +83,7 @@ impl App {
                 self.messages.push(msg);
             }
 
-            AppEvent::Key(k) => {
-                if k.kind != KeyEventKind::Press {
-                    return;
-                }
-
-                match k.code {
-                    KeyCode::Esc => self.should_quit = true,
-                    KeyCode::Enter => {
-                        if self.input.is_empty() {
-                            return;
-                        }
-
-                        let msg: String = self.input.drain(..).collect();
-                        self.messages.push(msg.clone());
-                        let _ = tx_out.send(msg);
-                    }
-                    KeyCode::Backspace => {
-                        self.input.pop();
-                    }
-                    KeyCode::Char(c) => {
-                        self.input.push(c);
-                    }
-                    _ => {}
-                }
-            }
+            AppEvent::Key(key) => self.handle_key(key, tx_out),
 
             _ => {}
         }
@@ -129,14 +105,28 @@ impl App {
         Ok(())
     }
 
-    fn handle_key(&mut self, key: KeyEvent) {
+    fn handle_key(&mut self, key: KeyEvent, tx_out: &Sender<String>) {
         if key.kind != KeyEventKind::Press {
             return;
         }
 
         match key.code {
-            // Quitting the TUI
-            KeyCode::Esc | KeyCode::Char('q') => self.should_quit = true,
+            KeyCode::Esc => self.should_quit = true,
+            KeyCode::Enter => {
+                if self.input.is_empty() {
+                    return;
+                }
+
+                let msg: String = self.input.drain(..).collect();
+                self.messages.push(msg.clone());
+                let _ = tx_out.send(msg);
+            }
+            KeyCode::Backspace => {
+                self.input.pop();
+            }
+            KeyCode::Char(c) => {
+                self.input.push(c);
+            }
             _ => {}
         }
     }
