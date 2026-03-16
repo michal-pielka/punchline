@@ -1,3 +1,4 @@
+use chrono::{DateTime, Local};
 use ratatui::{
     DefaultTerminal, Frame,
     crossterm::event::{KeyCode, KeyEvent, KeyEventKind},
@@ -5,7 +6,6 @@ use ratatui::{
     widgets::{Block, BorderType, Borders, Paragraph, Widget},
 };
 use std::sync::mpsc::{Receiver, Sender};
-use std::time::Instant;
 
 pub struct App {
     messages: Vec<ChatMessage>,
@@ -25,15 +25,15 @@ pub struct AppState {
 struct ChatMessage {
     text: String,
     sender: MessageSender,
-    timestamp: Instant,
+    timestamp: DateTime<Local>,
 }
 
 impl ChatMessage {
-    fn new(text: String, sender: MessageSender, timestamp: Instant) -> Self {
+    fn new(text: String, sender: MessageSender) -> Self {
         ChatMessage {
             text,
             sender,
-            timestamp,
+            timestamp: Local::now(),
         }
     }
 }
@@ -102,12 +102,12 @@ impl App {
     fn handle_event(&mut self, event: AppEvent, tx_out: &Sender<String>) {
         match event {
             AppEvent::MessageReceived(msg) => {
-                let chat_message = ChatMessage::new(msg, MessageSender::Peer, Instant::now());
+                let chat_message = ChatMessage::new(msg, MessageSender::Peer);
                 self.messages.push(chat_message);
             }
 
             AppEvent::MessageSent(msg) => {
-                let chat_message = ChatMessage::new(msg, MessageSender::Me, Instant::now());
+                let chat_message = ChatMessage::new(msg, MessageSender::Me);
                 self.messages.push(chat_message);
             }
 
@@ -146,7 +146,7 @@ impl App {
                 }
 
                 let msg: String = self.input.drain(..).collect();
-                let chat_message = ChatMessage::new(msg.clone(), MessageSender::Me, Instant::now());
+                let chat_message = ChatMessage::new(msg.clone(), MessageSender::Me);
                 self.messages.push(chat_message);
                 let _ = tx_out.send(msg);
             }
@@ -169,7 +169,11 @@ impl App {
                     MessageSender::Me => "You",
                     MessageSender::Peer => "Peer",
                 };
-                Line::raw(format!("{prefix}: {}", m.text))
+                Line::raw(format!(
+                    "[{}] {prefix}: {}",
+                    m.timestamp.format("%H:%M"),
+                    m.text
+                ))
             })
             .collect();
         let messages = Paragraph::new(text).block(
