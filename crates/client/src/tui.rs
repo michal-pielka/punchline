@@ -163,23 +163,13 @@ impl App {
     }
 
     fn render(&self, f: &mut Frame) {
-        let chunks = Layout::vertical([
-            Constraint::Length(4),
-            Constraint::Min(1),
-            Constraint::Length(3),
-        ])
-        .split(f.area());
+        // Main: top area (chat + sidebar) and bottom (input)
+        let main_chunks =
+            Layout::vertical([Constraint::Min(1), Constraint::Length(3)]).split(f.area());
 
-        // Header
-        let key_short = self.truncated_peer_key();
-        let peer_name = self.peer.alias.as_deref().unwrap_or(&key_short);
-        let header_top = " PUNCHLINE │ Noise_IK·ChaCha20·SHA256".to_string();
-        let header_bot = format!(" peer: {peer_name} │ {key_short} │ {}", self.peer.addr);
-        let header = Paragraph::new(vec![Line::raw(header_top), Line::raw(header_bot)]).block(
-            Block::new()
-                .borders(Borders::ALL)
-                .border_type(BorderType::Plain),
-        );
+        // Top: chat left, sidebar right
+        let top_chunks =
+            Layout::horizontal([Constraint::Min(1), Constraint::Length(31)]).split(main_chunks[0]);
 
         // Messages
         let text: Vec<Line> = self
@@ -187,11 +177,11 @@ impl App {
             .iter()
             .map(|m| {
                 let prefix = match m.sender {
-                    MessageSender::Me => "You",
-                    MessageSender::Peer => "Peer",
+                    MessageSender::Me => "Me",
+                    MessageSender::Peer => self.peer_display_name(),
                 };
                 Line::raw(format!(
-                    " [{}] {prefix}: {}",
+                    " [{}] <{prefix}> {}",
                     m.timestamp.format("%H:%M"),
                     m.text
                 ))
@@ -199,6 +189,22 @@ impl App {
             .collect();
         let messages = Paragraph::new(text).block(
             Block::new()
+                .title(" PUNCHLINE ")
+                .borders(Borders::ALL)
+                .border_type(BorderType::Plain),
+        );
+
+        // Identity panel
+        let key_short = self.truncated_peer_key();
+        let peer_name = self.peer_display_name();
+        let peer = Paragraph::new(vec![
+            Line::raw(format!(" ALIAS: {peer_name}")),
+            Line::raw(format!(" KEY: {key_short}")),
+            Line::raw(format!(" ADDR: {}", self.peer.addr)),
+        ])
+        .block(
+            Block::new()
+                .title(" PEER ")
                 .borders(Borders::ALL)
                 .border_type(BorderType::Plain),
         );
@@ -210,9 +216,13 @@ impl App {
                 .border_type(BorderType::Plain),
         );
 
-        f.render_widget(header, chunks[0]);
-        f.render_widget(messages, chunks[1]);
-        f.render_widget(input, chunks[2]);
+        f.render_widget(messages, top_chunks[0]);
+        f.render_widget(peer, top_chunks[1]);
+        f.render_widget(input, main_chunks[1]);
+    }
+
+    fn peer_display_name(&self) -> &str {
+        self.peer.alias.as_deref().unwrap_or("unknown")
     }
 
     fn truncated_peer_key(&self) -> String {

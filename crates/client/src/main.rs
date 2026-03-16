@@ -196,11 +196,13 @@ fn connect(
 
     // TUI - main thread
     let terminal = ratatui::init();
-    let app = App::new(PeerInfo {
-        alias: peer_alias,
-        public_key: peer_key_resolved,
-        addr: peer_addr.to_string(),
-    });
+    let app = App::new(
+        PeerInfo {
+            alias: peer_alias,
+            public_key: peer_key_resolved,
+            addr: peer_addr.to_string(),
+        },
+    );
     let result = app.run(terminal, rx, tx_out);
     ratatui::restore();
 
