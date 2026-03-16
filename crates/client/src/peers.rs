@@ -1,7 +1,6 @@
 use std::collections::HashMap;
 use std::path::PathBuf;
 
-use ed25519_dalek::VerifyingKey;
 use serde::{Deserialize, Serialize};
 
 use crate::cli::PeersAction;
@@ -39,12 +38,10 @@ fn save(peers: &Peers) -> anyhow::Result<()> {
 }
 
 fn validate_key(key: &str) -> anyhow::Result<()> {
-    let bytes: [u8; 32] = hex::decode(key)
+    let _bytes: [u8; 32] = hex::decode(key)
         .map_err(|_| anyhow::anyhow!("Key is not valid hex"))?
         .try_into()
         .map_err(|_| anyhow::anyhow!("Key must be 32 bytes (64 hex chars)"))?;
-    VerifyingKey::from_bytes(&bytes)
-        .map_err(|_| anyhow::anyhow!("Key is not a valid Ed25519 public key"))?;
     Ok(())
 }
 
