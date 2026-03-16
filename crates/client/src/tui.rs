@@ -1,7 +1,8 @@
 use ratatui::{
     DefaultTerminal, Frame,
     crossterm::event::{KeyCode, KeyEvent, KeyEventKind},
-    widgets::{Block, BorderType, Borders, Widget},
+    text::Line,
+    widgets::{Block, BorderType, Borders, Paragraph, Widget},
 };
 use std::sync::mpsc::{Receiver, Sender};
 
@@ -139,6 +140,8 @@ impl App {
         let app_block = Block::new()
             .borders(Borders::ALL)
             .border_type(BorderType::Rounded);
+        let text: Vec<Line> = self.messages.iter().map(Line::raw).collect();
+        let messages_paragraph = Paragraph::new(text);
 
         app_block.render(f.area(), f.buffer_mut());
     }
