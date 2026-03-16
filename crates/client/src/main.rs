@@ -154,10 +154,13 @@ fn connect(
         handshake::exchange_keys(&secret_key, &public_key, &peer_public_key, &sock, peer_addr)
             .context("Key exchange failed")?;
 
+    // App channel
     let (tx, rx) = mpsc::channel::<AppEvent>();
-    let tx_out = tx.clone();
 
-    message::start(noise, &sock, tx_out, rx, peer_addr)?;
+    // Message channel
+    let (tx_out, rx_out) = mpsc::channel::<String>();
+
+    message::start(noise, &sock, tx_out, rx_out, peer_addr)?;
 
     // Terminal event thread
     let tx_term = tx.clone();
