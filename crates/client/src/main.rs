@@ -6,7 +6,7 @@ use anyhow::Context;
 use clap::{CommandFactory, Parser};
 use punchline_client::cli::{Args, Command};
 use punchline_client::config::Config;
-use punchline_client::tui::{App, AppEvent};
+use punchline_client::tui::{App, AppEvent, PeerInfo};
 use punchline_client::{config, handshake, identity, message, peers, punch, signal, stun};
 use tracing::info;
 
@@ -149,8 +149,13 @@ fn connect(
         .context("No identity found. Run 'punchline keygen' first.")?;
     info!(public_key = %hex::encode(public_key), "Identity loaded");
 
-    let peer_key = peers::resolve_peer_key(peer_key)?;
-    let peer_public_key: [u8; 32] = hex::decode(&peer_key)
+    let peer_key_resolved = peers::resolve_peer_key(peer_key)?;
+    let peer_alias = if peer_key_resolved != peer_key {
+        Some(peer_key.to_string())
+    } else {
+        None
+    };
+    let peer_public_key: [u8; 32] = hex::decode(&peer_key_resolved)
         .context("Peer key is not valid hex")?
         .try_into()
         .map_err(|_| anyhow::anyhow!("Peer key must be 32 bytes (64 hex chars)"))?;
@@ -191,7 +196,11 @@ fn connect(
 
     // TUI - main thread
     let terminal = ratatui::init();
-    let app = App::new();
+    let app = App::new(PeerInfo {
+        alias: peer_alias,
+        public_key: peer_key_resolved,
+        addr: peer_addr.to_string(),
+    });
     let result = app.run(terminal, rx, tx_out);
     ratatui::restore();
 

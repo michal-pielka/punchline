@@ -8,11 +8,17 @@ use ratatui::{
 };
 use std::sync::mpsc::{Receiver, Sender};
 
+pub struct PeerInfo {
+    pub alias: Option<String>,
+    pub public_key: String,
+    pub addr: String,
+}
+
 pub struct App {
     messages: Vec<ChatMessage>,
     input: String,
+    peer: PeerInfo,
     pub should_quit: bool,
-    // pub state: AppState,
 }
 
 pub struct AppState {
@@ -85,17 +91,12 @@ pub enum StepStatus {
     Failed,
 }
 
-impl Default for App {
-    fn default() -> Self {
-        Self::new()
-    }
-}
-
 impl App {
-    pub fn new() -> Self {
+    pub fn new(peer: PeerInfo) -> Self {
         App {
             messages: Vec::new(),
             input: String::new(),
+            peer,
             should_quit: false,
         }
     }
@@ -162,7 +163,23 @@ impl App {
     }
 
     fn render(&self, f: &mut Frame) {
-        let chunks = Layout::vertical([Constraint::Min(1), Constraint::Length(3)]).split(f.area());
+        let chunks = Layout::vertical([
+            Constraint::Length(4),
+            Constraint::Min(1),
+            Constraint::Length(3),
+        ])
+        .split(f.area());
+
+        // Header
+        let key_short = self.truncated_peer_key();
+        let peer_name = self.peer.alias.as_deref().unwrap_or(&key_short);
+        let header_top = " PUNCHLINE │ Noise_IK·ChaCha20·SHA256".to_string();
+        let header_bot = format!(" peer: {peer_name} │ {key_short} │ {}", self.peer.addr);
+        let header = Paragraph::new(vec![Line::raw(header_top), Line::raw(header_bot)]).block(
+            Block::new()
+                .borders(Borders::ALL)
+                .border_type(BorderType::Rounded),
+        );
 
         // Messages
         let text: Vec<Line> = self
@@ -174,7 +191,7 @@ impl App {
                     MessageSender::Peer => "Peer",
                 };
                 Line::raw(format!(
-                    "[{}] {prefix}: {}",
+                    " [{}] {prefix}: {}",
                     m.timestamp.format("%H:%M"),
                     m.text
                 ))
@@ -193,7 +210,13 @@ impl App {
                 .border_type(BorderType::Rounded),
         );
 
-        f.render_widget(messages, chunks[0]);
-        f.render_widget(input, chunks[1]);
+        f.render_widget(header, chunks[0]);
+        f.render_widget(messages, chunks[1]);
+        f.render_widget(input, chunks[2]);
+    }
+
+    fn truncated_peer_key(&self) -> String {
+        let k = &self.peer.public_key;
+        format!("{}..{}", &k[..8], &k[k.len() - 8..])
     }
 }
