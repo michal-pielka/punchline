@@ -2,7 +2,8 @@ use chrono::{DateTime, Local};
 use ratatui::{
     DefaultTerminal, Frame,
     crossterm::event::{KeyCode, KeyEvent, KeyEventKind},
-    layout::{Constraint, Layout},
+    layout::{Constraint, Layout, Spacing},
+    symbols::merge::MergeStrategy,
     text::Line,
     widgets::{Block, BorderType, Borders, Paragraph},
 };
@@ -164,12 +165,14 @@ impl App {
 
     fn render(&self, f: &mut Frame) {
         // Main: top area (chat + sidebar) and bottom (input)
-        let main_chunks =
-            Layout::vertical([Constraint::Min(1), Constraint::Length(3)]).split(f.area());
+        let main_chunks = Layout::vertical([Constraint::Min(1), Constraint::Length(3)])
+            .spacing(Spacing::Overlap(1))
+            .split(f.area());
 
         // Top: chat left, sidebar right
-        let top_chunks =
-            Layout::horizontal([Constraint::Min(1), Constraint::Length(31)]).split(main_chunks[0]);
+        let top_chunks = Layout::horizontal([Constraint::Min(1), Constraint::Length(31)])
+            .spacing(Spacing::Overlap(1))
+            .split(main_chunks[0]);
 
         // Messages
         let text: Vec<Line> = self
@@ -191,7 +194,8 @@ impl App {
             Block::new()
                 .title(" PUNCHLINE ")
                 .borders(Borders::ALL)
-                .border_type(BorderType::Plain),
+                .border_type(BorderType::Plain)
+                .merge_borders(MergeStrategy::Exact),
         );
 
         // Identity panel
@@ -206,14 +210,16 @@ impl App {
             Block::new()
                 .title(" PEER ")
                 .borders(Borders::ALL)
-                .border_type(BorderType::Plain),
+                .border_type(BorderType::Plain)
+                .merge_borders(MergeStrategy::Exact),
         );
 
         // Input
         let input = Paragraph::new(format!(" > {}", self.input)).block(
             Block::new()
                 .borders(Borders::ALL)
-                .border_type(BorderType::Plain),
+                .border_type(BorderType::Plain)
+                .merge_borders(MergeStrategy::Exact),
         );
 
         f.render_widget(messages, top_chunks[0]);
