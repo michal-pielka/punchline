@@ -5,9 +5,10 @@ use ratatui::{
     widgets::{Block, BorderType, Borders, Paragraph, Widget},
 };
 use std::sync::mpsc::{Receiver, Sender};
+use std::time::Instant;
 
 pub struct App {
-    messages: Vec<String>,
+    messages: Vec<ChatMessage>,
     input: String,
     pub should_quit: bool,
     // pub state: AppState,
@@ -19,6 +20,27 @@ pub struct AppState {
     pub my_key: String,
     pub peer_key: String,
     pub peer_alias: Option<String>,
+}
+
+struct ChatMessage {
+    text: String,
+    sender: MessageSender,
+    timestamp: Instant,
+}
+
+impl ChatMessage {
+    fn new(text: String, sender: MessageSender, timestamp: Instant) -> Self {
+        ChatMessage {
+            text,
+            sender,
+            timestamp,
+        }
+    }
+}
+
+enum MessageSender {
+    Me,
+    Peer,
 }
 
 pub enum AppEvent {
@@ -79,8 +101,14 @@ impl App {
 
     fn handle_event(&mut self, event: AppEvent, tx_out: &Sender<String>) {
         match event {
-            AppEvent::MessageReceived(msg) | AppEvent::MessageSent(msg) => {
-                self.messages.push(msg);
+            AppEvent::MessageReceived(msg) => {
+                let chat_message = ChatMessage::new(msg, MessageSender::Peer, Instant::now());
+                self.messages.push(chat_message);
+            }
+
+            AppEvent::MessageSent(msg) => {
+                let chat_message = ChatMessage::new(msg, MessageSender::Me, Instant::now());
+                self.messages.push(chat_message);
             }
 
             AppEvent::Key(key) => self.handle_key(key, tx_out),
@@ -118,7 +146,8 @@ impl App {
                 }
 
                 let msg: String = self.input.drain(..).collect();
-                self.messages.push(msg.clone());
+                let chat_message = ChatMessage::new(msg.clone(), MessageSender::Me, Instant::now());
+                self.messages.push(chat_message);
                 let _ = tx_out.send(msg);
             }
             KeyCode::Backspace => {
@@ -132,7 +161,17 @@ impl App {
     }
 
     fn render(&self, f: &mut Frame) {
-        let text: Vec<Line> = self.messages.iter().map(Line::raw).collect();
+        let text: Vec<Line> = self
+            .messages
+            .iter()
+            .map(|m| {
+                let prefix = match m.sender {
+                    MessageSender::Me => "You",
+                    MessageSender::Peer => "Peer",
+                };
+                Line::raw(format!("{prefix}: {}", m.text))
+            })
+            .collect();
         let messages = Paragraph::new(text).block(
             Block::new()
                 .borders(Borders::ALL)
