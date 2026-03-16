@@ -183,9 +183,16 @@ impl App {
         .spacing(Spacing::Overlap(1))
         .split(top_chunks[1]);
 
+        // Sidebar filler
+        let sidebar_fill = Block::new()
+            .borders(Borders::RIGHT)
+            .border_type(BorderType::Plain)
+            .merge_borders(MergeStrategy::Exact);
+
         f.render_widget(self.render_messages(), top_chunks[0]);
         f.render_widget(self.render_peer_panel(), sidebar_chunks[0]);
         f.render_widget(self.render_crypto_panel(), sidebar_chunks[1]);
+        f.render_widget(sidebar_fill, sidebar_chunks[2]);
         f.render_widget(self.render_input(), main_chunks[1]);
     }
 
