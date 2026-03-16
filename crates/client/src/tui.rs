@@ -178,7 +178,7 @@ impl App {
         let header = Paragraph::new(vec![Line::raw(header_top), Line::raw(header_bot)]).block(
             Block::new()
                 .borders(Borders::ALL)
-                .border_type(BorderType::Rounded),
+                .border_type(BorderType::Plain),
         );
 
         // Messages
@@ -200,14 +200,14 @@ impl App {
         let messages = Paragraph::new(text).block(
             Block::new()
                 .borders(Borders::ALL)
-                .border_type(BorderType::Rounded),
+                .border_type(BorderType::Plain),
         );
 
         // Input
         let input = Paragraph::new(format!(" > {}", self.input)).block(
             Block::new()
                 .borders(Borders::ALL)
-                .border_type(BorderType::Rounded),
+                .border_type(BorderType::Plain),
         );
 
         f.render_widget(header, chunks[0]);
