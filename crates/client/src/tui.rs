@@ -193,14 +193,14 @@ impl App {
             .border_style(RatStyle::new().fg(self.style.colors.border))
             .merge_borders(MergeStrategy::Exact);
 
-        f.render_widget(self.render_messages(), top_chunks[0]);
+        f.render_widget(self.render_messages(top_chunks[0].height), top_chunks[0]);
         f.render_widget(self.render_peer_panel(), sidebar_chunks[0]);
         f.render_widget(self.render_crypto_panel(), sidebar_chunks[1]);
         f.render_widget(self.render_input(), main_chunks[1]);
         f.render_widget(sidebar_fill, sidebar_chunks[2]);
     }
 
-    fn render_messages(&self) -> Paragraph<'_> {
+    fn render_messages(&self, height: u16) -> Paragraph<'_> {
         let colors = &self.style.colors;
         let text: Vec<Line> = self
             .messages
@@ -218,7 +218,11 @@ impl App {
                 .style(RatStyle::new().fg(color))
             })
             .collect();
-        Paragraph::new(text).block(
+
+        let visible = height.saturating_sub(2) as usize; // minus borders
+        let scroll = text.len().saturating_sub(visible) as u16;
+
+        Paragraph::new(text).scroll((scroll, 0)).block(
             Block::new()
                 .title(" punchline ")
                 .borders(Borders::ALL)
