@@ -7,6 +7,8 @@ use serde::Deserialize;
 struct StyleToml {
     #[serde(default)]
     colors: ColorsToml,
+    #[serde(default)]
+    padding: PaddingToml,
 }
 
 #[derive(Deserialize, Default)]
@@ -19,6 +21,14 @@ struct ColorsToml {
     sidebar_value: Option<String>,
 }
 
+#[derive(Deserialize, Default)]
+struct PaddingToml {
+    #[serde(default)]
+    chat_horizontal: u16,
+    #[serde(default)]
+    chat_vertical: u16,
+}
+
 pub struct Colors {
     pub border: Color,
     pub my_text: Color,
@@ -26,6 +36,12 @@ pub struct Colors {
     pub input_text: Color,
     pub sidebar_key: Color,
     pub sidebar_value: Color,
+}
+
+#[derive(Default)]
+pub struct Padding {
+    pub chat_horizontal: u16,
+    pub chat_vertical: u16,
 }
 
 impl Default for Colors {
@@ -44,6 +60,7 @@ impl Default for Colors {
 #[derive(Default)]
 pub struct Style {
     pub colors: Colors,
+    pub padding: Padding,
 }
 
 fn default_style_path() -> anyhow::Result<PathBuf> {
@@ -116,6 +133,10 @@ pub fn load_style() -> Style {
                 .as_deref()
                 .and_then(parse_color)
                 .unwrap_or(default_colors.sidebar_value),
+        },
+        padding: Padding {
+            chat_horizontal: toml.padding.chat_horizontal,
+            chat_vertical: toml.padding.chat_vertical,
         },
     }
 }

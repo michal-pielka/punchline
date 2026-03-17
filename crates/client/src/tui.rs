@@ -160,7 +160,6 @@ impl App {
     }
 
     // Connecting view
-
     fn render_connecting(&self, f: &mut Frame) {
         let colors = &self.style.colors;
 
@@ -225,11 +224,25 @@ impl App {
     }
 
     // Chat view
-
     fn render_chat(&self, f: &mut Frame) {
+        // Padding
+        let vertical = Layout::vertical([
+            Constraint::Length(self.style.padding.chat_vertical),
+            Constraint::Min(0),
+            Constraint::Length(self.style.padding.chat_vertical),
+        ])
+        .split(f.area());
+
+        let area = Layout::horizontal([
+            Constraint::Length(self.style.padding.chat_horizontal),
+            Constraint::Min(0),
+            Constraint::Length(self.style.padding.chat_horizontal),
+        ])
+        .split(vertical[1])[1];
+
         let main_chunks = Layout::vertical([Constraint::Min(1), Constraint::Length(3)])
             .spacing(Spacing::Overlap(1))
-            .split(f.area());
+            .split(area);
 
         let top_chunks = Layout::horizontal([Constraint::Min(1), Constraint::Length(31)])
             .spacing(Spacing::Overlap(1))
