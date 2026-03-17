@@ -1,5 +1,7 @@
 use std::net::SocketAddr;
+use std::sync::mpsc::Sender;
 
+use crate::tui::AppEvent;
 use punchline_proto::signal::{PairRequest, PairResponse};
 use tracing::{debug, info};
 
@@ -8,9 +10,15 @@ pub fn pair_with_peer(
     public_key: &[u8; 32],
     peer_public_key: &[u8; 32],
     signal_addr: SocketAddr,
+    tx: Sender<AppEvent>,
 ) -> anyhow::Result<PairResponse> {
     debug!(%signal_addr, "Connecting to signal server");
     let (mut sock, _response) = tungstenite::connect(format!("ws://{}", signal_addr))?;
+
+    let _ = tx.send(AppEvent::StepComplete {
+        step: 1,
+        detail: "connected".into(),
+    });
 
     let pair_request = PairRequest::new(external_addr, public_key, peer_public_key);
 

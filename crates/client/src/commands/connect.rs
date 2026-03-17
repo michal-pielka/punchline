@@ -142,27 +142,28 @@ fn run_connection(
     };
 
     // Signal Server (connect) + match
-    let _ = tx.send(AppEvent::StepComplete {
-        step: 1,
-        detail: "connected".into(),
-    });
-    let peer =
-        match signal::pair_with_peer(external_addr, &public_key, &peer_public_key, signal_addr) {
-            Ok(result) => {
-                let _ = tx.send(AppEvent::StepComplete {
-                    step: 2,
-                    detail: "paired".into(),
-                });
-                result
-            }
-            Err(e) => {
-                let _ = tx.send(AppEvent::StepFailed {
-                    step: 2,
-                    detail: format!("{e:#}"),
-                });
-                return Err(e).context("Signaling failed");
-            }
-        };
+    let peer = match signal::pair_with_peer(
+        external_addr,
+        &public_key,
+        &peer_public_key,
+        signal_addr,
+        tx.clone(),
+    ) {
+        Ok(result) => {
+            let _ = tx.send(AppEvent::StepComplete {
+                step: 2,
+                detail: "paired".into(),
+            });
+            result
+        }
+        Err(e) => {
+            let _ = tx.send(AppEvent::StepFailed {
+                step: 1,
+                detail: format!("{e:#}"),
+            });
+            return Err(e).context("Signaling failed");
+        }
+    };
     let peer_addr = peer.target_external_addr;
 
     // Hole Punch
