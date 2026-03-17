@@ -64,9 +64,9 @@ pub struct Style {
 }
 
 fn default_style_path() -> anyhow::Result<PathBuf> {
-    Ok(dirs::home_dir()
-        .ok_or_else(|| anyhow::anyhow!("Could not find home directory"))?
-        .join(".punchline")
+    Ok(dirs::config_dir()
+        .ok_or_else(|| anyhow::anyhow!("Could not find config directory"))?
+        .join("punchline")
         .join("style.toml"))
 }
 
