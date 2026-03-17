@@ -2,7 +2,7 @@ use std::path::PathBuf;
 use std::sync::mpsc::{self, Sender};
 use std::thread::{self, JoinHandle};
 
-use crate::config::{self, Config};
+use crate::config;
 use crate::tui::{App, AppEvent, PeerInfo};
 use crate::{handshake, identity, message, peers, punch, signal, stun, style};
 use anyhow::Context;
@@ -13,10 +13,7 @@ pub fn handle(
     stun_addr: Option<String>,
     signal_addr: Option<String>,
 ) -> anyhow::Result<()> {
-    let cfg = config::load_config().unwrap_or(Config {
-        stun_server: None,
-        signal_server: None,
-    });
+    let cfg = config::load_config().unwrap_or_default();
 
     let stun_addr = resolve_addr(stun_addr, cfg.stun_server, "stun")?;
     let signal_addr = resolve_addr(signal_addr, cfg.signal_server, "signal")?;

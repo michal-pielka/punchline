@@ -5,7 +5,7 @@ use serde::Deserialize;
 
 use crate::cli::ConfigAction;
 
-#[derive(Deserialize)]
+#[derive(Deserialize, Default)]
 pub struct Config {
     pub stun_server: Option<SocketAddr>,
     pub signal_server: Option<SocketAddr>,

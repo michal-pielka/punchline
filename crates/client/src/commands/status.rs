@@ -1,13 +1,10 @@
 use std::path::PathBuf;
 
-use crate::config::{self, Config};
+use crate::config;
 use crate::{identity, peers, stun};
 
 pub fn handle(identity_path: Option<PathBuf>) -> anyhow::Result<()> {
-    let cfg = config::load_config().unwrap_or(Config {
-        stun_server: None,
-        signal_server: None,
-    });
+    let cfg = config::load_config().unwrap_or_default();
 
     match identity::load_identity(identity_path) {
         Ok((_secret, public)) => println!("Identity:       {}", hex::encode(public)),
