@@ -92,6 +92,8 @@ impl App {
 
         // Connection progress steps
         let mut step_lines: Vec<Line> = vec![Line::raw("")];
+        let max_label_len = self.steps.iter().map(|s| s.label.len()).max().unwrap_or(0);
+
         for step in &self.steps {
             let (icon, style) = match step.status {
                 StepStatus::Pending => (" . ", RatStyle::new().fg(colors.sidebar_key)),
@@ -100,7 +102,13 @@ impl App {
                 StepStatus::Failed => (" x ", RatStyle::new().fg(colors.peer_text)),
             };
 
-            let mut spans = vec![Span::styled(icon, style), Span::styled(step.label, style)];
+            let mut spans = vec![
+                Span::styled(icon, style),
+                Span::styled(
+                    format!("{:<width$}", step.label, width = max_label_len),
+                    style,
+                ),
+            ];
 
             if !step.detail.is_empty() {
                 spans.push(Span::styled(
