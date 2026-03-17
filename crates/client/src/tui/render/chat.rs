@@ -34,25 +34,14 @@ impl App {
             .spacing(Spacing::Overlap(1))
             .split(main_chunks[0]);
 
-        let sidebar_chunks = Layout::vertical([
-            Constraint::Length(7),
-            Constraint::Length(8),
-            Constraint::Min(0),
-        ])
-        .spacing(Spacing::Overlap(1))
-        .split(top_chunks[1]);
-
-        let sidebar_fill = Block::new()
-            .borders(Borders::RIGHT)
-            .border_type(BorderType::Plain)
-            .border_style(RatStyle::new().fg(self.style.colors.border))
-            .merge_borders(MergeStrategy::Exact);
+        let sidebar_chunks = Layout::vertical([Constraint::Length(7), Constraint::Min(0)])
+            .spacing(Spacing::Overlap(1))
+            .split(top_chunks[1]);
 
         f.render_widget(self.render_messages(top_chunks[0].height), top_chunks[0]);
         f.render_widget(self.render_peer_panel(), sidebar_chunks[0]);
         f.render_widget(self.render_crypto_panel(), sidebar_chunks[1]);
         f.render_widget(self.render_input(), main_chunks[1]);
-        f.render_widget(sidebar_fill, sidebar_chunks[2]);
     }
 
     pub fn render_messages(&self, height: u16) -> Paragraph<'_> {
@@ -132,6 +121,7 @@ impl App {
         .block(
             Block::new()
                 .title("── crypto ")
+                .title_bottom("── Esc to quit ")
                 .borders(Borders::ALL)
                 .border_type(BorderType::Plain)
                 .border_style(RatStyle::new().fg(colors.border))

@@ -219,7 +219,7 @@ impl App {
         let target_panel = Paragraph::new(target_lines).block(
             Block::new()
                 .title("── target ")
-                .title_bottom("── Esc to cancel ")
+                .title_bottom("── Esc to quit ")
                 .borders(Borders::ALL)
                 .border_type(BorderType::Plain)
                 .border_style(RatStyle::new().fg(colors.border))
