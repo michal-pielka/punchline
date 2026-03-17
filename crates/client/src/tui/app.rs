@@ -1,3 +1,7 @@
+use crate::tui::AppEvent;
+use ratatui::DefaultTerminal;
+use std::sync::mpsc::Receiver;
+
 use chrono::{DateTime, Local};
 use std::sync::mpsc::Sender;
 
@@ -72,6 +76,24 @@ pub enum Phase {
 }
 
 impl App {
+    pub fn run(
+        mut self,
+        mut terminal: DefaultTerminal,
+        rx: Receiver<AppEvent>,
+    ) -> anyhow::Result<()> {
+        while !self.should_quit {
+            let event = rx.recv()?;
+            self.handle_event(event);
+
+            terminal.draw(|f| match self.phase {
+                Phase::Connecting => self.render_connecting(f),
+                Phase::Connected => self.render_chat(f),
+            })?;
+        }
+
+        Ok(())
+    }
+
     pub fn new(style: Style, connect_info: ConnectInfo) -> Self {
         let steps = vec![
             ConnectionStep {
