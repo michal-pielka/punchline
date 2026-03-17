@@ -5,6 +5,7 @@ use crate::tui::app::{App, ChatMessage, MessageSender, Phase};
 
 pub enum AppEvent {
     Key(KeyEvent),
+    Resize,
     StepComplete {
         step: usize,
         detail: String,
@@ -52,6 +53,8 @@ impl App {
             }
 
             AppEvent::Error(_) => {}
+
+            AppEvent::Resize => {}
 
             AppEvent::Key(key) => self.handle_key(key),
         }
