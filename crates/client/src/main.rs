@@ -8,24 +8,9 @@ use punchline_client::cli::{Args, Command};
 use punchline_client::config::Config;
 use punchline_client::tui::{App, AppEvent, PeerInfo};
 use punchline_client::{config, handshake, identity, message, peers, punch, signal, stun, style};
-use tracing::info;
 
 fn main() -> anyhow::Result<()> {
     let args = Args::parse();
-
-    let log_level = if args.quiet {
-        None
-    } else {
-        match args.verbose {
-            0 => Some(tracing::Level::INFO),
-            1 => Some(tracing::Level::DEBUG),
-            _ => Some(tracing::Level::TRACE),
-        }
-    };
-
-    if let Some(level) = log_level {
-        tracing_subscriber::fmt().with_max_level(level).init();
-    }
 
     match args.command {
         Command::Keygen { force } => identity::generate(args.identity_path, force),
@@ -57,22 +42,18 @@ fn status(identity_path: Option<PathBuf>) -> anyhow::Result<()> {
     });
 
     match identity::load_identity(identity_path) {
-        Ok((_secret, public)) => {
-            println!("Identity:       {}", hex::encode(public));
-        }
+        Ok((_secret, public)) => println!("Identity:       {}", hex::encode(public)),
         Err(_) => println!("Identity:       not found"),
     }
 
     match config::default_config_path() {
         Ok(path) if path.exists() => println!("Config:         {}", path.display()),
-        Ok(_) => println!("Config:         not found"),
-        Err(_) => println!("Config:         not found"),
+        _ => println!("Config:         not found"),
     }
 
     match cfg.stun_server {
         Some(addr) => {
-            let reachable = stun::get_external_addr(addr).is_ok();
-            let tag = if reachable {
+            let tag = if stun::get_external_addr(addr).is_ok() {
                 "reachable"
             } else {
                 "unreachable"
@@ -84,70 +65,84 @@ fn status(identity_path: Option<PathBuf>) -> anyhow::Result<()> {
 
     match cfg.signal_server {
         Some(addr) => {
-            let reachable =
-                std::net::TcpStream::connect_timeout(&addr, std::time::Duration::from_secs(3))
-                    .is_ok();
-            let tag = if reachable {
-                "reachable"
-            } else {
-                "unreachable"
-            };
+            let tag =
+                if std::net::TcpStream::connect_timeout(&addr, std::time::Duration::from_secs(3))
+                    .is_ok()
+                {
+                    "reachable"
+                } else {
+                    "unreachable"
+                };
             println!("Signal server:  {addr} [{tag}]");
         }
         None => println!("Signal server:  not configured"),
     }
 
-    let count = peers::load().map(|p| p.peers.len()).unwrap_or(0);
-    println!("Known peers:    {count}");
+    println!(
+        "Known peers:    {}",
+        peers::load().map(|p| p.peers.len()).unwrap_or(0)
+    );
 
     Ok(())
+}
+
+fn resolve_addr(
+    cli: Option<String>,
+    cfg: Option<std::net::SocketAddr>,
+    name: &str,
+) -> anyhow::Result<String> {
+    match cli {
+        Some(s) => Ok(s),
+        None => cfg.map(|s| s.to_string()).ok_or_else(|| {
+            anyhow::anyhow!("No {name} address. Use --{name} or set '{name}_server' in config.toml")
+        }),
+    }
 }
 
 fn spawn_terminal_thread(tx: Sender<AppEvent>) -> JoinHandle<()> {
     thread::spawn(move || {
         loop {
-            if let Ok(event) = crossterm::event::read() {
-                let app_event = match event {
-                    crossterm::event::Event::Key(key) => AppEvent::Key(key),
-                    crossterm::event::Event::Resize(w, h) => AppEvent::Resize(w, h),
-                    _ => continue,
-                };
-                if tx.send(app_event).is_err() {
-                    break;
-                }
+            if let Ok(crossterm::event::Event::Key(key)) = crossterm::event::read()
+                && tx.send(AppEvent::Key(key)).is_err()
+            {
+                break;
             }
         }
     })
 }
 
-fn connect(
+fn spawn_connection_thread(
+    tx: Sender<AppEvent>,
+    identity_path: Option<PathBuf>,
+    peer_key: String,
+    stun_addr: String,
+    signal_addr: String,
+) -> JoinHandle<()> {
+    thread::spawn(move || {
+        if let Err(e) = run_connection(
+            tx.clone(),
+            identity_path,
+            &peer_key,
+            &stun_addr,
+            &signal_addr,
+        ) {
+            let _ = tx.send(AppEvent::Error(format!("{e:#}")));
+        }
+    })
+}
+
+fn run_connection(
+    tx: Sender<AppEvent>,
     identity_path: Option<PathBuf>,
     peer_key: &str,
-    stun_addr: Option<String>,
-    signal_addr: Option<String>,
+    stun_addr: &str,
+    signal_addr: &str,
 ) -> anyhow::Result<()> {
-    let cfg = config::load_config().unwrap_or(Config {
-        stun_server: None,
-        signal_server: None,
-    });
-
-    let stun_addr = match stun_addr {
-        Some(s) => s.parse().context("Invalid --stun address")?,
-        None => cfg.stun_server.ok_or_else(|| {
-            anyhow::anyhow!("No STUN address. Use --stun or set 'stun_server' in config.toml")
-        })?,
-    };
-
-    let signal_addr = match signal_addr {
-        Some(s) => s.parse().context("Invalid --signal address")?,
-        None => cfg.signal_server.ok_or_else(|| {
-            anyhow::anyhow!("No signal address. Use --signal or set 'signal_server' in config.toml")
-        })?,
-    };
+    let stun_addr = stun_addr.parse().context("Invalid STUN address")?;
+    let signal_addr = signal_addr.parse().context("Invalid signal address")?;
 
     let (secret_key, public_key) = identity::load_identity(identity_path)
         .context("No identity found. Run 'punchline keygen' first.")?;
-    info!(public_key = %hex::encode(public_key), "Identity loaded");
 
     let peer_key_resolved = peers::resolve_peer_key(peer_key)?;
     let peer_alias = if peer_key_resolved != peer_key {
@@ -162,50 +157,60 @@ fn connect(
 
     let (external_addr, sock) =
         stun::get_external_addr(stun_addr).context("STUN discovery failed")?;
-    info!(%external_addr, "Discovered external address");
 
     let peer = signal::pair_with_peer(external_addr, &public_key, &peer_public_key, signal_addr)
         .context("Signaling failed")?;
     let peer_addr = peer.target_external_addr;
-    info!(%peer_addr, peer_key = %peer.target_public_key, "Paired with peer");
 
     punch::establish(&sock, peer_addr).context("Hole punching failed")?;
-    info!("Connection established, ready for messages");
 
     let noise =
         handshake::exchange_keys(&secret_key, &public_key, &peer_public_key, &sock, peer_addr)
             .context("Key exchange failed")?;
 
-    // App channel
-    // tx: recv thread -> main thread
-    // tx_term: term thread -> main thread
-    // rx: main thread <- recv thread | term thread
-    let (tx, rx) = mpsc::channel::<AppEvent>();
-    let tx_term = tx.clone();
-
-    // Message channel
-    // tx_out: main thread -> send thread
-    // rx_out: send thread <- main thread
     let (tx_out, rx_out) = mpsc::channel::<String>();
+    message::start(noise, &sock, tx.clone(), rx_out, peer_addr)?;
 
-    // Spawn message recv, send threads
-    message::start(noise, &sock, tx, rx_out, peer_addr)?;
-
-    // Spawn terminal thread
-    let _terminal_handle = spawn_terminal_thread(tx_term);
-
-    // TUI - main thread
-    let terminal = ratatui::init();
-    let style = style::load_style();
-    let app = App::new(
-        PeerInfo {
+    let _ = tx.send(AppEvent::Connected {
+        peer: PeerInfo {
             alias: peer_alias,
             public_key: peer_key_resolved,
             addr: peer_addr.to_string(),
         },
-        style,
+        tx_out,
+    });
+
+    Ok(())
+}
+
+fn connect(
+    identity_path: Option<PathBuf>,
+    peer_key: &str,
+    stun_addr: Option<String>,
+    signal_addr: Option<String>,
+) -> anyhow::Result<()> {
+    let cfg = config::load_config().unwrap_or(Config {
+        stun_server: None,
+        signal_server: None,
+    });
+
+    let stun_addr = resolve_addr(stun_addr, cfg.stun_server, "stun")?;
+    let signal_addr = resolve_addr(signal_addr, cfg.signal_server, "signal")?;
+
+    let (tx, rx) = mpsc::channel::<AppEvent>();
+
+    let _terminal_handle = spawn_terminal_thread(tx.clone());
+    let _connection_handle = spawn_connection_thread(
+        tx,
+        identity_path,
+        peer_key.to_string(),
+        stun_addr,
+        signal_addr,
     );
-    let result = app.run(terminal, rx, tx_out);
+
+    let terminal = ratatui::init();
+    let app = App::new(style::load_style());
+    let result = app.run(terminal, rx);
     ratatui::restore();
 
     result

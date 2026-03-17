@@ -10,6 +10,8 @@ use ratatui::{
 };
 use std::sync::mpsc::{Receiver, Sender};
 
+use crate::style::Style;
+
 pub struct PeerInfo {
     pub alias: Option<String>,
     pub public_key: String,
@@ -19,24 +21,23 @@ pub struct PeerInfo {
 pub struct App {
     messages: Vec<ChatMessage>,
     input: String,
-    peer: PeerInfo,
-    style: crate::style::Style,
+    peer: Option<PeerInfo>,
+    style: Style,
+    phase: Phase,
+    tx_out: Option<Sender<String>>,
     peer_disconnected: bool,
     pub should_quit: bool,
-}
-
-pub struct AppState {
-    pub phase: Phase,
-    pub steps: Vec<Step>,
-    pub my_key: String,
-    pub peer_key: String,
-    pub peer_alias: Option<String>,
 }
 
 struct ChatMessage {
     text: String,
     sender: MessageSender,
     timestamp: DateTime<Local>,
+}
+
+enum MessageSender {
+    Me,
+    Peer,
 }
 
 impl ChatMessage {
@@ -49,86 +50,60 @@ impl ChatMessage {
     }
 }
 
-enum MessageSender {
-    Me,
-    Peer,
-}
-
 pub enum AppEvent {
     Key(crossterm::event::KeyEvent),
-    Resize(u16, u16),
-    StepUpdate {
-        step: ConnectionStep,
-        status: StepStatus,
-        detail: String,
+    Connected {
+        peer: PeerInfo,
+        tx_out: Sender<String>,
     },
     MessageReceived(String),
-    MessageSent(String),
     PeerDisconnected,
     Error(String),
 }
 
-pub enum Phase {
+#[derive(PartialEq)]
+enum Phase {
     Connecting,
     Connected,
-    Disconnected,
-}
-
-pub struct Step {
-    pub con_step: ConnectionStep,
-    pub status: StepStatus,
-    pub detail: String,
-}
-
-pub enum ConnectionStep {
-    IdentityLoaded,
-    StunResolved,
-    SignalingComplete,
-    HolePunching,
-    KeyExchange,
-    SecureChannel,
-}
-
-pub enum StepStatus {
-    Pending,
-    Active,
-    Done,
-    Failed,
 }
 
 impl App {
-    pub fn new(peer: PeerInfo, style: crate::style::Style) -> Self {
+    pub fn new(style: Style) -> Self {
         App {
             messages: Vec::new(),
             input: String::new(),
-            peer,
+            peer: None,
             style,
+            phase: Phase::Connecting,
+            tx_out: None,
             peer_disconnected: false,
             should_quit: false,
         }
     }
 
-    fn handle_event(&mut self, event: AppEvent, tx_out: &Sender<String>) {
+    fn handle_event(&mut self, event: AppEvent) {
         match event {
+            AppEvent::Connected { peer, tx_out } => {
+                self.peer = Some(peer);
+                self.tx_out = Some(tx_out);
+                self.phase = Phase::Connected;
+            }
+
             AppEvent::MessageReceived(msg) => {
                 let chat_message = ChatMessage::new(msg, MessageSender::Peer);
                 self.messages.push(chat_message);
             }
 
-            AppEvent::MessageSent(msg) => {
-                let chat_message = ChatMessage::new(msg, MessageSender::Me);
-                self.messages.push(chat_message);
-            }
-
             AppEvent::PeerDisconnected => {
-                let msg = ChatMessage::new("peer disconnected.".to_string(), MessageSender::Peer);
+                let name = self.peer_display_name().to_string();
+                let msg = ChatMessage::new(format!("{name} disconnected."), MessageSender::Peer);
                 self.messages.push(msg);
                 self.peer_disconnected = true;
             }
 
-            AppEvent::Key(key) => self.handle_key(key, tx_out),
+            AppEvent::Error(_) => {}
 
-            _ => {}
+            AppEvent::Key(key) => self.handle_key(key),
         }
     }
 
@@ -136,19 +111,21 @@ impl App {
         mut self,
         mut terminal: DefaultTerminal,
         rx: Receiver<AppEvent>,
-        tx_out: Sender<String>,
     ) -> anyhow::Result<()> {
         while !self.should_quit {
             let event = rx.recv()?;
-            self.handle_event(event, &tx_out);
+            self.handle_event(event);
 
-            terminal.draw(|f| self.render(f))?;
+            terminal.draw(|f| match self.phase {
+                Phase::Connecting => self.render_connecting(f),
+                Phase::Connected => self.render_chat(f),
+            })?;
         }
 
         Ok(())
     }
 
-    fn handle_key(&mut self, key: KeyEvent, tx_out: &Sender<String>) {
+    fn handle_key(&mut self, key: KeyEvent) {
         if key.kind != KeyEventKind::Press {
             return;
         }
@@ -156,6 +133,9 @@ impl App {
         match key.code {
             KeyCode::Esc => self.should_quit = true,
             KeyCode::Enter => {
+                if self.phase != Phase::Connected {
+                    return;
+                }
                 if self.input.is_empty() || self.peer_disconnected {
                     return;
                 }
@@ -163,30 +143,98 @@ impl App {
                 let msg: String = self.input.drain(..).collect();
                 let chat_message = ChatMessage::new(msg.clone(), MessageSender::Me);
                 self.messages.push(chat_message);
-                let _ = tx_out.send(msg);
+                if let Some(tx_out) = &self.tx_out {
+                    let _ = tx_out.send(msg);
+                }
             }
             KeyCode::Backspace => {
                 self.input.pop();
             }
             KeyCode::Char(c) => {
-                self.input.push(c);
+                if self.phase == Phase::Connected {
+                    self.input.push(c);
+                }
             }
             _ => {}
         }
     }
 
-    fn render(&self, f: &mut Frame) {
-        // Main: top area (chat + sidebar) and bottom (input)
+    // Connecting view
+
+    fn render_connecting(&self, f: &mut Frame) {
+        let colors = &self.style.colors;
+
+        let horizontal = Layout::horizontal([
+            Constraint::Min(0),
+            Constraint::Length(81),
+            Constraint::Min(0),
+        ])
+        .split(f.area());
+
+        let vertical = Layout::vertical([
+            Constraint::Min(0),
+            Constraint::Length(13),
+            Constraint::Min(0),
+        ])
+        .split(horizontal[1]);
+
+        let lines = vec![
+            Line::raw(
+                r"                                         /$$       /$$ /$$                     ",
+            ),
+            Line::raw(
+                r"                                        | $$      | $$|__/                     ",
+            ),
+            Line::raw(
+                r"  /$$$$$$  /$$   /$$ /$$$$$$$   /$$$$$$$| $$$$$$$ | $$ /$$ /$$$$$$$   /$$$$$$  ",
+            ),
+            Line::raw(
+                r" /$$__  $$| $$  | $$| $$__  $$ /$$_____/| $$__  $$| $$| $$| $$__  $$ /$$__  $$ ",
+            ),
+            Line::raw(
+                r"| $$  \ $$| $$  | $$| $$  \ $$| $$      | $$  \ $$| $$| $$| $$  \ $$| $$$$$$$$ ",
+            ),
+            Line::raw(
+                r"| $$  | $$| $$  | $$| $$  | $$| $$      | $$  | $$| $$| $$| $$  | $$| $$_____/ ",
+            ),
+            Line::raw(
+                r"| $$$$$$$/|  $$$$$$/| $$  | $$|  $$$$$$$| $$  | $$| $$| $$| $$  | $$|  $$$$$$$ ",
+            ),
+            Line::raw(
+                r"| $$____/  \______/ |__/  |__/ \_______/|__/  |__/|__/|__/|__/  |__/ \_______/ ",
+            ),
+            Line::raw(
+                r"| $$                                                                           ",
+            ),
+            Line::raw(
+                r"| $$                                                                           ",
+            ),
+            Line::raw(
+                r"|__/                                                                           ",
+            ),
+        ];
+
+        let dialog = Paragraph::new(lines).block(
+            Block::new()
+                .borders(Borders::ALL)
+                .border_type(BorderType::Plain)
+                .border_style(RatStyle::new().fg(colors.border)),
+        );
+
+        f.render_widget(dialog, vertical[1]);
+    }
+
+    // Chat view
+
+    fn render_chat(&self, f: &mut Frame) {
         let main_chunks = Layout::vertical([Constraint::Min(1), Constraint::Length(3)])
             .spacing(Spacing::Overlap(1))
             .split(f.area());
 
-        // Top: chat left, sidebar right
         let top_chunks = Layout::horizontal([Constraint::Min(1), Constraint::Length(31)])
             .spacing(Spacing::Overlap(1))
             .split(main_chunks[0]);
 
-        // Sidebar: peer + crypto panels
         let sidebar_chunks = Layout::vertical([
             Constraint::Length(7),
             Constraint::Length(8),
@@ -195,7 +243,6 @@ impl App {
         .spacing(Spacing::Overlap(1))
         .split(top_chunks[1]);
 
-        // Sidebar filler
         let sidebar_fill = Block::new()
             .borders(Borders::RIGHT)
             .border_type(BorderType::Plain)
@@ -228,7 +275,7 @@ impl App {
             })
             .collect();
 
-        let visible = height.saturating_sub(2) as usize; // minus borders
+        let visible = height.saturating_sub(2) as usize;
         let scroll = text.len().saturating_sub(visible) as u16;
 
         Paragraph::new(text).scroll((scroll, 0)).block(
@@ -257,7 +304,10 @@ impl App {
             Line::raw(""),
             self.sidebar_line("alias", &peer_name),
             self.sidebar_line("key", &key_short),
-            self.sidebar_line("addr", &self.peer.addr),
+            self.sidebar_line(
+                "addr",
+                self.peer.as_ref().map(|p| p.addr.as_str()).unwrap_or("—"),
+            ),
             Line::raw(""),
         ])
         .block(
@@ -304,11 +354,19 @@ impl App {
     }
 
     fn peer_display_name(&self) -> &str {
-        self.peer.alias.as_deref().unwrap_or("unknown")
+        self.peer
+            .as_ref()
+            .and_then(|p| p.alias.as_deref())
+            .unwrap_or("unknown")
     }
 
     fn truncated_peer_key(&self) -> String {
-        let k = &self.peer.public_key;
-        format!("{}..{}", &k[..8], &k[k.len() - 8..])
+        match &self.peer {
+            Some(p) => {
+                let k = &p.public_key;
+                format!("{}..{}", &k[..8], &k[k.len() - 8..])
+            }
+            None => "—".to_string(),
+        }
     }
 }
