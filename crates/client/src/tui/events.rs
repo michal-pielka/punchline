@@ -5,6 +5,14 @@ use crate::tui::app::{App, ChatMessage, MessageSender, Phase};
 
 pub enum AppEvent {
     Key(KeyEvent),
+    StepComplete {
+        step: usize,
+        detail: String,
+    },
+    StepFailed {
+        step: usize,
+        detail: String,
+    },
     Connected {
         peer: crate::tui::app::PeerInfo,
         tx_out: Sender<String>,
@@ -17,6 +25,14 @@ pub enum AppEvent {
 impl App {
     pub fn handle_event(&mut self, event: AppEvent) {
         match event {
+            AppEvent::StepComplete { step, detail } => {
+                self.advance_step(step, detail);
+            }
+
+            AppEvent::StepFailed { step, detail } => {
+                self.fail_step(step, detail);
+            }
+
             AppEvent::Connected { peer, tx_out } => {
                 self.peer = Some(peer);
                 self.tx_out = Some(tx_out);
