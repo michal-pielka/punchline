@@ -1,6 +1,9 @@
-use crate::identity;
 use std::path::PathBuf;
 
+use crate::identity;
+
 pub fn handle(path: Option<PathBuf>) -> anyhow::Result<()> {
-    identity::print_pubkey(path)
+    let (_secret, public) = identity::load_identity(path)?;
+    println!("{}", hex::encode(public));
+    Ok(())
 }

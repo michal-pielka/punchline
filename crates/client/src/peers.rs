@@ -3,8 +3,6 @@ use std::path::PathBuf;
 
 use serde::{Deserialize, Serialize};
 
-use crate::cli::PeersAction;
-
 #[derive(Serialize, Deserialize, Default)]
 pub struct Peers {
     #[serde(default)]
@@ -27,7 +25,7 @@ pub fn load() -> anyhow::Result<Peers> {
     }
 }
 
-fn save(peers: &Peers) -> anyhow::Result<()> {
+pub fn save(peers: &Peers) -> anyhow::Result<()> {
     let path = default_peers_path()?;
     if let Some(parent) = path.parent() {
         std::fs::create_dir_all(parent)?;
@@ -37,7 +35,7 @@ fn save(peers: &Peers) -> anyhow::Result<()> {
     Ok(())
 }
 
-fn validate_key(key: &str) -> anyhow::Result<()> {
+pub fn validate_key(key: &str) -> anyhow::Result<()> {
     let _bytes: [u8; 32] = hex::decode(key)
         .map_err(|_| anyhow::anyhow!("Key is not valid hex"))?
         .try_into()
@@ -52,41 +50,6 @@ pub fn resolve_peer_key(peer_key: &str) -> anyhow::Result<String> {
         return Ok(hex_key.clone());
     }
     Ok(peer_key.to_string())
-}
-
-pub fn handle(action: Option<PeersAction>) -> anyhow::Result<()> {
-    match action {
-        None => {
-            let peers = load()?;
-            if peers.peers.is_empty() {
-                eprintln!("No known peers. Use 'punchline peers add <name> <key>' to add one.");
-            } else {
-                for (name, key) in &peers.peers {
-                    println!("{name} {key}");
-                }
-            }
-        }
-        Some(PeersAction::Add { name, key }) => {
-            validate_key(&key)?;
-            let mut peers = load()?;
-            if let Some(existing) = peers.peers.get(&name) {
-                anyhow::bail!("Peer '{name}' already exists with key {existing}");
-            }
-            peers.peers.insert(name.clone(), key);
-            save(&peers)?;
-            eprintln!("Added peer '{name}'");
-        }
-        Some(PeersAction::Remove { name }) => {
-            let mut peers = load()?;
-            if peers.peers.remove(&name).is_none() {
-                anyhow::bail!("Peer '{name}' not found");
-            }
-            save(&peers)?;
-            eprintln!("Removed peer '{name}'");
-        }
-    }
-
-    Ok(())
 }
 
 #[cfg(test)]
