@@ -81,3 +81,68 @@ pub fn exchange_keys<T: Transport>(
 
     Ok(handshake_state.into_transport_mode()?)
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use punchline_proto::crypto::generate_static_keypair;
+
+    #[test]
+    fn initiator_is_smaller_key() {
+        let mut low_key = [0u8; 32];
+        low_key[0] = 0x00;
+        let mut high_key = [0u8; 32];
+        high_key[0] = 0xFF;
+
+        let low_val = u64::from_be_bytes(low_key[..8].try_into().unwrap());
+        let high_val = u64::from_be_bytes(high_key[..8].try_into().unwrap());
+
+        assert!(low_val < high_val); // low_key is initiator
+    }
+
+    #[test]
+    fn noise_handshake_in_memory() {
+        let (secret_a, public_a) = generate_static_keypair();
+        let (secret_b, public_b) = generate_static_keypair();
+
+        let pattern: snow::params::NoiseParams = NOISE_PATTERN.parse().unwrap();
+
+        // A is initiator
+        let mut initiator = snow::Builder::new(pattern.clone())
+            .local_private_key(&secret_a)
+            .unwrap()
+            .remote_public_key(&public_b)
+            .unwrap()
+            .build_initiator()
+            .unwrap();
+
+        let mut responder = snow::Builder::new(pattern)
+            .local_private_key(&secret_b)
+            .unwrap()
+            .remote_public_key(&public_a)
+            .unwrap()
+            .build_responder()
+            .unwrap();
+
+        let mut buf1 = [0u8; 1024];
+        let mut buf2 = [0u8; 1024];
+
+        // initiator -> responder
+        let len = initiator.write_message(&[], &mut buf1).unwrap();
+        responder.read_message(&buf1[..len], &mut buf2).unwrap();
+
+        // responder -> initiator
+        let len = responder.write_message(&[], &mut buf1).unwrap();
+        initiator.read_message(&buf1[..len], &mut buf2).unwrap();
+
+        // Both should transition to transport mode
+        let mut transport_a = initiator.into_transport_mode().unwrap();
+        let mut transport_b = responder.into_transport_mode().unwrap();
+
+        // Verify encrypted messaging works
+        let msg = b"punchline";
+        let len = transport_a.write_message(msg, &mut buf1).unwrap();
+        let len = transport_b.read_message(&buf1[..len], &mut buf2).unwrap();
+        assert_eq!(&buf2[..len], msg);
+    }
+}
