@@ -116,7 +116,7 @@ After the initial setup, the STUN and signal servers are no longer contacted. Ev
 | Command | Description |
 |---|---|
 | `keygen [--force] [-i path]` | Generate a new X25519 identity keypair. Use `--force` to overwrite without prompting. Use `-i` to specify output path. |
-| `pubkey` | Print your public key (64 hex characters). |
+| `pubkey [-i path]` | Print your public key (64 hex characters). Use `-i` to derive from a specific key file. |
 | `connect <peer> [-i path] [--stun addr] [--signal addr]` | Connect to a peer by alias or raw hex key. Use `-i` to specify identity key. Launches the TUI. |
 | `peers` | List all known peers. |
 | `peers add <name> <key>` | Save a peer's public key under a nickname. |

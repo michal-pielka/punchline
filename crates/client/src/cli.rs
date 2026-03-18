@@ -9,10 +9,6 @@ pub struct Args {
     #[command(subcommand)]
     pub command: Command,
 
-    /// Path to identity key file
-    #[arg(short = 'i', long = "identity", global = true)]
-    pub identity_path: Option<PathBuf>,
-
     /// Increase log verbosity (-v debug, -vv trace)
     #[arg(short, long, global = true, action = clap::ArgAction::Count)]
     pub verbose: u8,
@@ -29,10 +25,18 @@ pub enum Command {
         /// Overwrite existing keypair without prompting
         #[arg(short, long)]
         force: bool,
+
+        /// Path to identity key file
+        #[arg(short = 'i', long = "identity")]
+        identity_path: Option<PathBuf>,
     },
 
     /// Print your public key
-    Pubkey,
+    Pubkey {
+        /// Path to identity key file
+        #[arg(short = 'i', long = "identity")]
+        identity_path: Option<PathBuf>,
+    },
 
     /// Manage configuration
     Config {
@@ -59,6 +63,10 @@ pub enum Command {
     Connect {
         /// Peer's public key (64 hex chars)
         peer_key: String,
+
+        /// Path to identity key file
+        #[arg(short = 'i', long = "identity")]
+        identity_path: Option<PathBuf>,
 
         /// STUN server address
         #[arg(short, long)]
