@@ -28,7 +28,9 @@ https://github.com/user-attachments/assets/939e96d3-45e3-4484-9a27-28c3a0457b05
   - [Signal Protocol](#signal-protocol)
   - [STUN Protocol](#stun-protocol)
 - [Project Structure](#project-structure)
-- [Building from Source](#building-from-source)
+- [Installation](#installation)
+  - [From crates.io](#from-cratesio)
+  - [Building from Source](#building-from-source)
 - [Running Tests](#running-tests)
 - [Tech Stack](#tech-stack)
 - [License](#license)
@@ -62,16 +64,16 @@ punchline-signald                # Signal server - matches peers who want to tal
 
 ```bash
 # Generate your identity (X25519 keypair)
-punchline-client keygen
+punchline keygen
 
 # Share your public key with your peer
-punchline-client pubkey
+punchline pubkey
 
 # Save their key
-punchline-client peers add alice a1b2c3d4...64_hex_chars
+punchline peers add alice a1b2c3d4...64_hex_chars
 
 # Connect (both peers run this, targeting each other)
-punchline-client connect alice --stun <server>:3478 --signal <server>:8743
+punchline connect alice --stun <server>:3478 --signal <server>:8743
 ```
 
 The TUI launches with a live connection progress view:
@@ -97,7 +99,7 @@ The entire system consists of three binaries, all included in this repo:
 |---|---|---|
 | `punchline-stund` | STUN server (UDP) - responds with the client's external IP:port | During setup only |
 | `punchline-signald` | Signal server (WebSocket) - matches peers and exchanges addresses | During setup only |
-| `punchline-client` | The messenger itself - CLI, TUI, crypto, hole punching | Always |
+| `punchline` | The messenger itself - CLI, TUI, crypto, hole punching | Always |
 
 After the initial setup, the STUN and signal servers are no longer contacted. Everything flows directly peer-to-peer.
 <!-- TODO: Diagram -->
@@ -106,7 +108,7 @@ After the initial setup, the STUN and signal servers are no longer contacted. Ev
 
 ## CLI Reference
 
-### `punchline-client`
+### `punchline`
 
 | Command | Description |
 |---|---|
@@ -162,9 +164,9 @@ signal_server = "203.0.113.10:8743"
 ### Managing Peers
 
 ```bash
-punchline-client peers                              # list all
-punchline-client peers add alice a1b2c3d4...        # add
-punchline-client peers remove alice                 # remove
+punchline peers                              # list all
+punchline peers add alice a1b2c3d4...        # add
+punchline peers remove alice                 # remove
 ```
 
 Aliases are stored in `~/.punchline/known_peers.toml`. You can also connect with a raw 64-char hex key directly.
@@ -172,7 +174,7 @@ Aliases are stored in `~/.punchline/known_peers.toml`. You can also connect with
 ### Status Check
 
 ```bash
-punchline-client status
+punchline status
 ```
 
 Shows your identity, config, server reachability (sends a real STUN probe and TCP connect), and peer count.
@@ -210,9 +212,9 @@ All colors are hex RGB. If the file is absent, the terminal's default colors are
 ### Shell Completions
 
 ```bash
-punchline-client completions bash > ~/.local/share/bash-completion/completions/punchline-client
-punchline-client completions zsh > ~/.zfunc/_punchline-client
-punchline-client completions fish > ~/.config/fish/completions/punchline-client.fish
+punchline completions bash > ~/.local/share/bash-completion/completions/punchline
+punchline completions zsh > ~/.zfunc/_punchline
+punchline completions fish > ~/.config/fish/completions/punchline.fish
 ```
 
 ---
@@ -302,18 +304,28 @@ crates/
 
 ---
 
-## Building from Source
+## Installation
+
+### From crates.io
+
+```bash
+cargo install punchline           # TUI client
+cargo install punchline-signald   # Signal server
+cargo install punchline-stund     # STUN server
+```
+
+### Building from Source
 
 **Prerequisites:** Rust 2024 edition (rustc 1.85+)
 
 ```bash
-git clone https://github.com/notmichaelpielka/punchline.git
+git clone https://github.com/michal-pielka/punchline.git
 cd punchline
 cargo build --release
 ```
 
 Binaries are placed in `target/release/`:
-- `punchline-client`
+- `punchline`
 - `punchline-signald`
 - `punchline-stund`
 
