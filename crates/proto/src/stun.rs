@@ -145,3 +145,45 @@ pub fn build_binding_request() -> (Vec<u8>, [u8; 12]) {
 
     (req, transaction_id)
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn binding_response_round_trip() {
+        let transaction_id = [0u8; 12];
+        let src_addr: SocketAddr = "192.168.0.69:42069".parse().unwrap();
+        let response = build_binding_response(&transaction_id, src_addr).unwrap();
+        let parsed = parse_xor_mapped_address(&response).unwrap();
+        assert_eq!(src_addr, parsed);
+    }
+
+    #[test]
+    fn parse_header_too_short() {
+        assert!(matches!(
+            parse_header(&[0u8; 5]),
+            Err(ProtoError::StunBufferTooShort)
+        ));
+    }
+
+    #[test]
+    fn parse_header_bad_cookie() {
+        let mut buf = [0u8; 20];
+        buf[4..8].copy_from_slice(&[0xDE, 0xAD, 0xBE, 0xEF]);
+        assert!(matches!(
+            parse_header(&buf),
+            Err(ProtoError::StunInvalidCookie)
+        ));
+    }
+
+    #[test]
+    fn build_binding_response_rejects_ipv6() {
+        let addr: SocketAddr = "[::1]:1234".parse().unwrap();
+        let txn_id = [0u8; 12];
+        assert!(matches!(
+            build_binding_response(&txn_id, addr),
+            Err(ProtoError::StunIpv6Unsupported)
+        ));
+    }
+}
