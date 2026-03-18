@@ -56,3 +56,40 @@ pub fn handle(action: ConfigAction) -> anyhow::Result<()> {
 
     Ok(())
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn parse_full_config() {
+        let toml = r#"
+            stun_server = "1.2.3.4:3478"
+            signal_server = "5.6.7.8:8743"
+        "#;
+        let config: Config = toml::from_str(toml).unwrap();
+        assert_eq!(
+            config.stun_server.unwrap(),
+            "1.2.3.4:3478".parse::<SocketAddr>().unwrap()
+        );
+        assert_eq!(
+            config.signal_server.unwrap(),
+            "5.6.7.8:8743".parse::<SocketAddr>().unwrap()
+        );
+    }
+
+    #[test]
+    fn parse_partial_config() {
+        let toml = r#"stun_server = "1.2.3.4:3478""#;
+        let config: Config = toml::from_str(toml).unwrap();
+        assert!(config.stun_server.is_some());
+        assert!(config.signal_server.is_none());
+    }
+
+    #[test]
+    fn parse_empty_config() {
+        let config: Config = toml::from_str("").unwrap();
+        assert!(config.stun_server.is_none());
+        assert!(config.signal_server.is_none());
+    }
+}
