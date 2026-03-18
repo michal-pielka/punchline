@@ -2,6 +2,10 @@
 name = "punchline-proto"
 version = "0.1.0"
 edition = "2024"
+description = "Protocol types and cryptographic primitives for punchline"
+license = "MIT"
+repository = "https://github.com/michal-pielka/punchline"
+readme = "../../README.md"
 
 [dependencies]
 hex = "0.4.3"
