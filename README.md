@@ -2,7 +2,8 @@
 
 End-to-end encrypted peer-to-peer chat over UDP. No accounts, no central server relaying/storing messages, no middleman. Just two peers, a direct connection, and Noise protocol encryption.
 
-https://github.com/user-attachments/assets/a9304104-6698-423a-b250-1b3e8b970d54
+https://github.com/user-attachments/assets/939e96d3-45e3-4484-9a27-28c3a0457b05
+
 
 ## Table of Contents
 
