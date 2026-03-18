@@ -88,3 +88,44 @@ pub fn handle(action: Option<PeersAction>) -> anyhow::Result<()> {
 
     Ok(())
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn validate_key_valid() {
+        let key = "aa".repeat(32); // 64 hex chars = 32 bytes
+        assert!(validate_key(&key).is_ok());
+    }
+
+    #[test]
+    fn validate_key_invalid_hex() {
+        assert!(validate_key("ZZZZ").is_err());
+    }
+
+    #[test]
+    fn validate_key_wrong_length() {
+        let key = "aa".repeat(16);
+        assert!(validate_key(&key).is_err());
+    }
+
+    #[test]
+    fn peers_toml_round_trip() {
+        let mut peers = Peers::default();
+        peers.peers.insert("alice".to_string(), "ab".repeat(32));
+        peers.peers.insert("bob".to_string(), "cd".repeat(32));
+
+        let serialized = toml::to_string(&peers).unwrap();
+        let parsed: Peers = toml::from_str(&serialized).unwrap();
+
+        assert_eq!(parsed.peers.get("alice"), Some(&"ab".repeat(32)));
+        assert_eq!(parsed.peers.get("bob"), Some(&"cd".repeat(32)));
+    }
+
+    #[test]
+    fn peers_empty_toml() {
+        let parsed: Peers = toml::from_str("").unwrap();
+        assert!(parsed.peers.is_empty());
+    }
+}
