@@ -46,8 +46,7 @@ impl App {
             }
 
             AppEvent::PeerDisconnected => {
-                let name = self.peer_display_name().to_string();
-                let msg = ChatMessage::new(format!("{name} disconnected."), MessageSender::Peer);
+                let msg = ChatMessage::new("disconnected.".to_string(), MessageSender::Peer);
                 self.messages.push(msg);
                 self.peer_disconnected = true;
             }
