@@ -72,23 +72,19 @@ fn resolve_addr(
 
 fn spawn_terminal_thread(tx: Sender<AppEvent>) -> JoinHandle<()> {
     thread::spawn(move || {
-        loop {
-            if let Ok(event) = crossterm::event::read() {
-                match event {
-                    crossterm::event::Event::Key(key) => {
-                        if tx.send(AppEvent::Key(key)).is_err() {
-                            break;
-                        }
+        while let Ok(event) = crossterm::event::read() {
+            match event {
+                crossterm::event::Event::Key(key) => {
+                    if tx.send(AppEvent::Key(key)).is_err() {
+                        break;
                     }
-                    crossterm::event::Event::Resize(..) => {
-                        if tx.send(AppEvent::Resize).is_err() {
-                            break;
-                        }
-                    }
-                    _ => {}
                 }
-            } else {
-                break;
+                crossterm::event::Event::Resize(..) => {
+                    if tx.send(AppEvent::Resize).is_err() {
+                        break;
+                    }
+                }
+                _ => {}
             }
         }
     })

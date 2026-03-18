@@ -81,55 +81,6 @@ fn parse_color(s: &str) -> Option<Color> {
     None
 }
 
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    #[test]
-    fn parse_color_hex_without_hash() {
-        assert_eq!(parse_color("FF8000"), Some(Color::Rgb(255, 128, 0)));
-    }
-
-    #[test]
-    fn parse_color_hex_with_hash() {
-        assert_eq!(parse_color("#FF8000"), Some(Color::Rgb(255, 128, 0)));
-    }
-
-    #[test]
-    fn parse_color_invalid_returns_none() {
-        assert_eq!(parse_color("ZZZZZZ"), None);
-    }
-
-    #[test]
-    fn parse_color_wrong_length_returns_none() {
-        assert_eq!(parse_color("FFF"), None);
-    }
-
-    #[test]
-    fn style_toml_with_overrides() {
-        let toml_str = r#"
-            [colors]
-            border = "FF0000"
-            my_text = "00FF00"
-
-            [padding]
-            chat_horizontal = 3
-            chat_vertical = 1
-        "#;
-        let parsed: StyleToml = toml::from_str(toml_str).unwrap();
-        assert_eq!(parsed.colors.border.as_deref(), Some("FF0000"));
-        assert!(parsed.colors.peer_text.is_none()); // not overridden
-        assert_eq!(parsed.padding.chat_horizontal, 3);
-    }
-
-    #[test]
-    fn style_toml_empty() {
-        let parsed: StyleToml = toml::from_str("").unwrap();
-        assert!(parsed.colors.border.is_none());
-        assert_eq!(parsed.padding.chat_horizontal, 0);
-    }
-}
-
 pub fn load_style() -> Style {
     let defaults = Style::default();
 
@@ -187,5 +138,54 @@ pub fn load_style() -> Style {
             chat_horizontal: toml.padding.chat_horizontal,
             chat_vertical: toml.padding.chat_vertical,
         },
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn parse_color_hex_without_hash() {
+        assert_eq!(parse_color("FF8000"), Some(Color::Rgb(255, 128, 0)));
+    }
+
+    #[test]
+    fn parse_color_hex_with_hash() {
+        assert_eq!(parse_color("#FF8000"), Some(Color::Rgb(255, 128, 0)));
+    }
+
+    #[test]
+    fn parse_color_invalid_returns_none() {
+        assert_eq!(parse_color("ZZZZZZ"), None);
+    }
+
+    #[test]
+    fn parse_color_wrong_length_returns_none() {
+        assert_eq!(parse_color("FFF"), None);
+    }
+
+    #[test]
+    fn style_toml_with_overrides() {
+        let toml_str = r#"
+            [colors]
+            border = "FF0000"
+            my_text = "00FF00"
+
+            [padding]
+            chat_horizontal = 3
+            chat_vertical = 1
+        "#;
+        let parsed: StyleToml = toml::from_str(toml_str).unwrap();
+        assert_eq!(parsed.colors.border.as_deref(), Some("FF0000"));
+        assert!(parsed.colors.peer_text.is_none()); // not overridden
+        assert_eq!(parsed.padding.chat_horizontal, 3);
+    }
+
+    #[test]
+    fn style_toml_empty() {
+        let parsed: StyleToml = toml::from_str("").unwrap();
+        assert!(parsed.colors.border.is_none());
+        assert_eq!(parsed.padding.chat_horizontal, 0);
     }
 }
