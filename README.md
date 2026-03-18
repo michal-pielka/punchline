@@ -2,8 +2,7 @@
 
 End-to-end encrypted peer-to-peer chat over UDP. No accounts, no central server relaying/storing messages, no middleman. Just two peers, a direct connection, and Noise protocol encryption.
 
-<!-- TODO: GIF of the full flow — both terminals side by side, connecting and chatting -->
-<!-- ![demo](assets/demo.gif) -->
+https://github.com/user-attachments/assets/a9304104-6698-423a-b250-1b3e8b970d54
 
 ## Table of Contents
 
@@ -37,10 +36,9 @@ End-to-end encrypted peer-to-peer chat over UDP. No accounts, no central server 
 
 ## What It Does
 
-Two people run `punchline connect <peer>` on their machines. Punchline punches through their NATs, performs an encrypted handshake, and drops them into a private chat — all in a few milliseconds. The included STUN and signal servers handle discovery, then get out of the way.
+Two people run `punchline connect <peer>` on their machines. Punchline punches through their NATs, performs an encrypted handshake, and drops them into a private chat - all in a few milliseconds. The included STUN and signal servers handle discovery, then get out of the way.
+<img width="1422" height="920" alt="convo" src="https://github.com/user-attachments/assets/bceda761-5398-42ee-a706-9a7697140336" />
 
-<!-- TODO: Screenshot of the chat view (split-pane with sidebar showing peer info and crypto details) -->
-<!-- ![chat](assets/chat.png) -->
 
 ---
 
@@ -53,12 +51,11 @@ cargo build --release
 **Start the servers** (on a machine both peers can reach), or use my public ones hosted at `64.225.107.28` (STUN: port `3478`, signaling: port `8743`):
 
 ```bash
-punchline-stund                  # STUN server — tells peers their public IP
-punchline-signald                # Signal server — matches peers who want to talk
+punchline-stund                  # STUN server - tells peers their public IP
+punchline-signald                # Signal server - matches peers who want to talk
 ```
+<img width="2540" height="1532" alt="servers" src="https://github.com/user-attachments/assets/81745412-6477-4119-a53c-3fc82889e414" />
 
-<!-- TODO: Screenshot of both servers running with -v output showing a successful pairing -->
-<!-- ![servers](assets/servers.png) -->
 
 **On each peer's machine:**
 
@@ -76,19 +73,16 @@ punchline-client peers add alice a1b2c3d4...64_hex_chars
 punchline-client connect alice --stun <server>:3478 --signal <server>:8743
 ```
 
-<!-- TODO: Screenshot of keygen + pubkey output -->
-<!-- ![keygen](assets/keygen.png) -->
-
 The TUI launches with a live connection progress view:
 
-1. STUN discovery — resolving your external address via `punchline-stund`
-2. Signal server — connecting to `punchline-signald`
-3. Waiting for peer — signal server matches both peers
-4. Hole punch — establishing the direct UDP path
-5. Noise handshake — encrypted key exchange
+1. STUN discovery - resolving your external address via `punchline-stund`
+2. Signal server - connecting to `punchline-signald`
+3. Waiting for peer - signal server matches both peers
+4. Hole punch - establishing the direct UDP path
+5. Noise handshake - encrypted key exchange
 
-<!-- TODO: Screenshot of the connecting progress view (ASCII art banner + 5 steps) -->
-<!-- ![connecting](assets/connecting.png) -->
+   <img width="1908" height="1228" alt="dashboard" src="https://github.com/user-attachments/assets/89a84985-c83b-4a72-bfbb-63b6890ff279" />
+
 
 Once complete, you're in the chat. Type and press Enter. Press Esc to quit.
 
@@ -100,9 +94,9 @@ The entire system consists of three binaries, all included in this repo:
 
 | Binary | Role | When used |
 |---|---|---|
-| `punchline-stund` | STUN server (UDP) — responds with the client's external IP:port | During setup only |
-| `punchline-signald` | Signal server (WebSocket) — matches peers and exchanges addresses | During setup only |
-| `punchline-client` | The messenger itself — CLI, TUI, crypto, hole punching | Always |
+| `punchline-stund` | STUN server (UDP) - responds with the client's external IP:port | During setup only |
+| `punchline-signald` | Signal server (WebSocket) - matches peers and exchanges addresses | During setup only |
+| `punchline-client` | The messenger itself - CLI, TUI, crypto, hole punching | Always |
 
 After the initial setup, the STUN and signal servers are no longer contacted. Everything flows directly peer-to-peer.
 <!-- TODO: Diagram -->
@@ -182,9 +176,6 @@ punchline-client status
 
 Shows your identity, config, server reachability (sends a real STUN probe and TCP connect), and peer count.
 
-<!-- TODO: Screenshot of status output -->
-<!-- ![status](assets/status.png) -->
-
 ### Server Options
 
 Both servers support `-v` (debug), `-vv` (trace), `-q` (quiet), `--address`, and `--port`:
@@ -231,7 +222,7 @@ Full protocol name: `Noise_IK_25519_ChaChaPoly_SHA256`
 
 | Component | Role |
 |---|---|
-| **Noise IK** | Handshake pattern — initiator knows responder's public key. Completes in 2 messages. |
+| **Noise IK** | Handshake pattern - initiator knows responder's public key. Completes in 2 messages. |
 | **X25519** | Elliptic-curve Diffie-Hellman key exchange (RFC 7748). 128-bit security, constant-time. |
 | **ChaCha20-Poly1305** | AEAD cipher for message encryption (RFC 8439). Same cipher used in TLS 1.3 and WireGuard. |
 | **SHA-256** | Used internally by Noise for key derivation and handshake hashing. |
@@ -353,4 +344,4 @@ Tests cover cryptographic operations, STUN encoding/decoding, signal protocol se
 
 ## License
 
-MIT — see [LICENSE](LICENSE).
+MIT - see [LICENSE](LICENSE).
