@@ -1,6 +1,6 @@
 use clap::Parser;
-use punchline_client::cli::{Args, Command};
-use punchline_client::commands;
+use punchline::cli::{Args, Command};
+use punchline::commands;
 
 fn main() -> anyhow::Result<()> {
     let args = Args::parse();

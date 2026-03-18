@@ -1307,7 +1307,7 @@ dependencies = [
 ]
 
 [[package]]
-name = "punchline-client"
+name = "punchline"
 version = "0.1.0"
 dependencies = [
  "anyhow",

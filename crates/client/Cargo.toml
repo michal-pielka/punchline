@@ -1,5 +1,5 @@
 [package]
-name = "punchline-client"
+name = "punchline"
 version = "0.1.0"
 edition = "2024"
 
@@ -11,7 +11,7 @@ clap_complete = "4.6.0"
 crossterm = "0.29.0"
 dirs = "6.0.0"
 hex = "0.4.3"
-punchline-proto = { path = "../proto" }
+punchline-proto = { path = "../proto", version = "0.1.0" }
 ratatui = "0.30.0"
 serde = { version = "1.0.228", features = ["derive"] }
 serde_json = "1.0.149"
