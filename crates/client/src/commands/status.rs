@@ -18,7 +18,7 @@ pub fn handle(identity_path: Option<PathBuf>) -> anyhow::Result<()> {
 
     match cfg.stun_server {
         Some(addr) => {
-            let tag = if stun::get_external_addr(addr).is_ok() {
+            let tag = if stun::test_connection(addr).unwrap_or(false) {
                 "reachable"
             } else {
                 "unreachable"
