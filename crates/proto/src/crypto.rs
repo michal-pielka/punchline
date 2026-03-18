@@ -12,3 +12,15 @@ pub fn public_key_from_secret(secret: &[u8; 32]) -> [u8; 32] {
     let public = PublicKey::from(&secret);
     public.to_bytes()
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn keypair_derives_correctly() {
+        let (secret, public) = generate_static_keypair();
+        let derived = public_key_from_secret(&secret);
+        assert_eq!(public, derived);
+    }
+}
