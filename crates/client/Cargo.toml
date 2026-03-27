@@ -1,6 +1,6 @@
 [package]
 name = "punchline"
-version = "0.1.0"
+version = "0.1.1"
 edition = "2024"
 description = "P2P encrypted TUI messenger using Noise IK over UDP"
 license = "MIT"

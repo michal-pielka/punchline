@@ -38,35 +38,73 @@ impl App {
             .spacing(Spacing::Overlap(1))
             .split(top_chunks[1]);
 
-        f.render_widget(self.render_messages(top_chunks[0].height), top_chunks[0]);
+        f.render_widget(
+            self.render_messages(top_chunks[0].height, top_chunks[0].width),
+            top_chunks[0],
+        );
         f.render_widget(self.render_peer_panel(), sidebar_chunks[0]);
         f.render_widget(self.render_crypto_panel(), sidebar_chunks[1]);
         f.render_widget(self.render_input(), main_chunks[1]);
     }
 
-    pub fn render_messages(&self, height: u16) -> Paragraph<'_> {
+    pub fn render_messages(&self, height: u16, width: u16) -> Paragraph<'_> {
         let colors = &self.style.colors;
-        let text: Vec<Line> = self
+        let inner_width = width.saturating_sub(2) as usize; // subtract borders
+
+        let lines: Vec<Line> = self
             .messages
             .iter()
-            .map(|m| {
+            .flat_map(|m| {
                 let (prefix, color) = match m.sender {
                     MessageSender::Me => ("Me", colors.my_text),
                     MessageSender::Peer => (self.peer_display_name(), colors.peer_text),
                 };
-                Line::raw(format!(
-                    " [{}] <{prefix}> {}",
-                    m.timestamp.format("%H:%M"),
-                    m.text
-                ))
-                .style(RatStyle::new().fg(color))
+                let prefix_str = format!(" [{}] <{prefix}> ", m.timestamp.format("%H:%M"));
+                let prefix_len = prefix_str.len();
+                let full = format!("{prefix_str}{}", m.text);
+
+                if inner_width == 0 || full.len() <= inner_width {
+                    return vec![Line::raw(full).style(RatStyle::new().fg(color))];
+                }
+
+                let indent = " ".repeat(prefix_len);
+                let mut result = Vec::new();
+                let mut remaining = full.as_str();
+
+                while !remaining.is_empty() {
+                    let take = if result.is_empty() {
+                        inner_width
+                    } else {
+                        inner_width.saturating_sub(prefix_len)
+                    };
+
+                    let split_at = remaining
+                        .char_indices()
+                        .map(|(i, _)| i)
+                        .chain(std::iter::once(remaining.len()))
+                        .skip(1)
+                        .find(|&i| i >= take)
+                        .unwrap_or(remaining.len());
+
+                    let chunk = &remaining[..split_at];
+                    remaining = &remaining[split_at..];
+
+                    let line_str = if result.is_empty() {
+                        chunk.to_string()
+                    } else {
+                        format!("{indent}{chunk}")
+                    };
+                    result.push(Line::raw(line_str).style(RatStyle::new().fg(color)));
+                }
+
+                result
             })
             .collect();
 
         let visible = height.saturating_sub(2) as usize;
-        let scroll = text.len().saturating_sub(visible) as u16;
+        let scroll = lines.len().saturating_sub(visible) as u16;
 
-        Paragraph::new(text).scroll((scroll, 0)).block(
+        Paragraph::new(lines).scroll((scroll, 0)).block(
             Block::new()
                 .title(" punchline ")
                 .borders(Borders::ALL)
